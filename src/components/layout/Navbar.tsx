@@ -47,6 +47,11 @@ export function Navbar() {
     { href: '/faq', label: 'FAQ' },
   ]
 
+  const authLinks = user ? [
+    { href: '/alimentacao', label: 'Alimentação' },
+    { href: '/consulta', label: 'Consulta' },
+  ] : []
+
   return (
     <header className="border-b border-zinc-800 bg-zinc-950/80 backdrop-blur-sm sticky top-0 z-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -58,6 +63,19 @@ export function Navbar() {
 
           <nav className="hidden md:flex items-center gap-6">
             {navLinks.map(link => (
+              <Link
+                key={link.href}
+                href={link.href}
+                className={`text-sm transition-colors ${
+                  pathname.startsWith(link.href)
+                    ? 'text-white font-medium'
+                    : 'text-zinc-400 hover:text-white'
+                }`}
+              >
+                {link.label}
+              </Link>
+            ))}
+            {authLinks.map(link => (
               <Link
                 key={link.href}
                 href={link.href}
@@ -139,6 +157,21 @@ export function Navbar() {
                 {link.label}
               </Link>
             ))}
+            {authLinks.map(link => (
+              <Link
+                key={link.href}
+                href={link.href}
+                onClick={() => setMenuOpen(false)}
+                className="text-sm py-2 text-zinc-400 hover:text-white transition-colors"
+              >
+                {link.label}
+              </Link>
+            ))}
+            {profile?.role === 'admin' && (
+              <Link href="/admin/dados" onClick={() => setMenuOpen(false)} className="text-sm py-2 text-amber-400 hover:text-amber-300 transition-colors">
+                Gestão de Dados
+              </Link>
+            )}
           </div>
         )}
       </div>

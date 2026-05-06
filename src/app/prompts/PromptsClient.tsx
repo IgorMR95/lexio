@@ -234,6 +234,11 @@ function PromptCard({ prompt }: { prompt: PromptWithRelations }) {
               {(prompt as any).subcategorias.nome}
             </span>
           )}
+          {(prompt as any).internacional && (
+            <span className="px-2 py-0.5 rounded-full bg-indigo-500/10 text-indigo-400 text-xs border border-indigo-500/20">
+              Intl{(prompt as any).idioma ? ` · ${(prompt as any).idioma.toUpperCase()}` : ''}
+            </span>
+          )}
         </div>
 
         {prompt.tags.length > 0 && (

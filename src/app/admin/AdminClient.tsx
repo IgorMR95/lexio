@@ -1,8 +1,7 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import Link from 'next/link'
 
 interface Profile { id: string; full_name: string; email: string; role: string; created_at: string }
 interface AuditLog { id: string; acao: string; entidade: string; entidade_id: string; detalhes: any; criado_em: string; profiles: { full_name: string } | null }
@@ -41,15 +40,20 @@ export function AdminClient({ currentUserId, profiles: initialProfiles, auditLog
   const [areas, setAreas] = useState(initialAreas)
   const [pendentes, setPendentes] = useState(stats.pendentes)
 
+  const reloadProfiles = useCallback(async () => {
+    const { data } = await (supabase as any).from('profiles').select('id, full_name, email, role, created_at').order('created_at', { ascending: false })
+    setProfiles(data ?? [])
+  }, [])
+
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
       <div className="flex items-start justify-between mb-8">
         <div>
           <div className="flex items-center gap-2 mb-1">
             <span className="px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 text-xs border border-amber-500/20">Admin</span>
-            <h1 className="text-2xl font-bold text-white">Administração</h1>
+            <h1 className="text-2xl font-bold text-white">Gestão da Base</h1>
           </div>
-          <p className="text-zinc-500 text-sm">Gerenciamento do sistema</p>
+          <p className="text-zinc-500 text-sm">Gerenciamento completo do sistema</p>
         </div>
       </div>
 
@@ -59,7 +63,7 @@ export function AdminClient({ currentUserId, profiles: initialProfiles, auditLog
           <p className="text-xs text-zinc-500 mb-1">Total de prompts</p>
           <p className="text-2xl font-bold text-white">{stats.totalPrompts}</p>
         </div>
-        <div className="p-4 rounded-xl border border-zinc-800 bg-zinc-900/50 cursor-pointer" onClick={() => setActiveTab('revisao')}>
+        <div className="p-4 rounded-xl border border-zinc-800 bg-zinc-900/50 cursor-pointer hover:border-amber-500/30 transition-colors" onClick={() => setActiveTab('revisao')}>
           <p className="text-xs text-zinc-500 mb-1">Pendentes revisão</p>
           <p className="text-2xl font-bold text-amber-400">{pendentes}</p>
         </div>
@@ -82,26 +86,17 @@ export function AdminClient({ currentUserId, profiles: initialProfiles, auditLog
         ))}
       </div>
 
-      {activeTab === 'revisao' && (
-        <RevisaoTab onCountChange={setPendentes} areas={areas} categorias={categorias} />
-      )}
-      {activeTab === 'prompts' && (
-        <PromptsTab areas={areas} categorias={categorias} subcategorias={subcategorias} />
-      )}
-      {activeTab === 'usuarios' && (
-        <UsuariosTab profiles={profiles} currentUserId={currentUserId} onReload={async () => {
-          const { data } = await supabase.from('profiles').select('id, full_name, email, role, created_at').order('created_at', { ascending: false })
-          setProfiles(data ?? [])
-        }} />
-      )}
+      {activeTab === 'revisao' && <RevisaoTab onCountChange={setPendentes} />}
+      {activeTab === 'prompts' && <PromptsTab areas={areas} categorias={categorias} subcategorias={subcategorias} />}
+      {activeTab === 'usuarios' && <UsuariosTab profiles={profiles} currentUserId={currentUserId} onReload={reloadProfiles} />}
       {activeTab === 'estrutura' && (
         <EstruturaTab
           categorias={categorias} subcategorias={subcategorias} subniveis={subniveis}
           onReload={async () => {
             const [c, s, n] = await Promise.all([
-              supabase.from('categorias_principais').select('*').order('ordem'),
-              supabase.from('subcategorias').select('*').order('ordem'),
-              supabase.from('subniveis').select('*').order('ordem'),
+              (supabase as any).from('categorias_principais').select('*').order('ordem'),
+              (supabase as any).from('subcategorias').select('*').order('ordem'),
+              (supabase as any).from('subniveis').select('*').order('ordem'),
             ])
             setCategorias(c.data ?? [])
             setSubcategorias(s.data ?? [])
@@ -111,7 +106,7 @@ export function AdminClient({ currentUserId, profiles: initialProfiles, auditLog
       )}
       {activeTab === 'areas' && (
         <AreasTab areas={areas} onReload={async () => {
-          const { data } = await supabase.from('areas_direito').select('*').order('ordem')
+          const { data } = await (supabase as any).from('areas_direito').select('*').order('ordem')
           setAreas(data ?? [])
         }} />
       )}
@@ -122,7 +117,7 @@ export function AdminClient({ currentUserId, profiles: initialProfiles, auditLog
 
 // ── Revisão ───────────────────────────────────────────────────────────────────
 
-function RevisaoTab({ onCountChange, areas, categorias }: { onCountChange: (n: number) => void; areas: Area[]; categorias: Categoria[] }) {
+function RevisaoTab({ onCountChange }: { onCountChange: (n: number) => void }) {
   const supabase = createClient()
   const [prompts, setPrompts] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
@@ -132,27 +127,25 @@ function RevisaoTab({ onCountChange, areas, categorias }: { onCountChange: (n: n
     setLoading(true)
     const { data } = await (supabase as any)
       .from('prompts')
-      .select('*, areas_direito(nome), categorias_principais(nome), profiles(full_name, email)')
+      .select('*, areas_direito(nome), categorias_principais(nome), profiles!autor_id(full_name, email)')
       .eq('status', 'pendente')
       .order('created_at', { ascending: true })
     setPrompts(data ?? [])
     onCountChange(data?.length ?? 0)
     setLoading(false)
-  }, [])
+  }, [onCountChange])
 
-  useEffect(() => { load() }, [])
+  useEffect(() => { load() }, [load])
 
   const aprovar = async (id: string) => {
     await (supabase as any).from('prompts').update({ status: 'aprovado' }).eq('id', id)
     load()
   }
-
   const rejeitar = async (id: string) => {
     if (!confirm('Rejeitar e remover este prompt?')) return
     await (supabase as any).from('prompts').delete().eq('id', id)
     load()
   }
-
   const marcarAtivo = async (id: string) => {
     await (supabase as any).from('prompts').update({ status: 'ativo' }).eq('id', id)
     load()
@@ -183,11 +176,16 @@ function RevisaoTab({ onCountChange, areas, categorias }: { onCountChange: (n: n
                 </span>
                 {p.areas_direito?.nome && <span className="text-xs text-zinc-600">{p.areas_direito.nome}</span>}
                 {p.categorias_principais?.nome && <span className="text-xs text-zinc-600">{p.categorias_principais.nome}</span>}
+                {p.internacional && (
+                  <span className="text-xs px-1.5 py-0.5 rounded bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
+                    Internacional{p.idioma ? ` · ${p.idioma.toUpperCase()}` : ''}
+                  </span>
+                )}
                 <span className="text-xs text-zinc-600">{new Date(p.created_at).toLocaleDateString('pt-BR')}</span>
               </div>
               {p.descricao_curta && <p className="text-xs text-zinc-500 mt-1 italic">{p.descricao_curta}</p>}
             </div>
-            <div className="flex items-center gap-2 flex-shrink-0">
+            <div className="flex items-center gap-2 flex-shrink-0 flex-wrap justify-end">
               <button onClick={() => setExpanded(expanded === p.id ? null : p.id)}
                 className="text-xs text-zinc-500 hover:text-white transition-colors px-2 py-1 rounded border border-zinc-800 hover:border-zinc-600">
                 {expanded === p.id ? 'Fechar' : 'Ver texto'}
@@ -228,6 +226,18 @@ function RevisaoTab({ onCountChange, areas, categorias }: { onCountChange: (n: n
 
 const PAGE_SIZE = 20
 
+const IDIOMAS = [
+  { code: 'en', label: 'Inglês (EN)' },
+  { code: 'es', label: 'Espanhol (ES)' },
+  { code: 'fr', label: 'Francês (FR)' },
+  { code: 'de', label: 'Alemão (DE)' },
+  { code: 'it', label: 'Italiano (IT)' },
+  { code: 'pt-PT', label: 'Português (PT-PT)' },
+  { code: 'zh', label: 'Chinês (ZH)' },
+  { code: 'ja', label: 'Japonês (JA)' },
+  { code: 'ar', label: 'Árabe (AR)' },
+]
+
 function PromptsTab({ areas, categorias, subcategorias }: { areas: Area[]; categorias: Categoria[]; subcategorias: Subcategoria[] }) {
   const supabase = createClient()
   const [data, setData] = useState<any[]>([])
@@ -236,27 +246,43 @@ function PromptsTab({ areas, categorias, subcategorias }: { areas: Area[]; categ
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [filterStatus, setFilterStatus] = useState('')
+  const [filterInternacional, setFilterInternacional] = useState('')
   const [editing, setEditing] = useState<any>(null)
   const [editForm, setEditForm] = useState<any>({})
   const [saving, setSaving] = useState(false)
 
-  const load = useCallback(async (p = 0) => {
+  const searchRef = useRef(search)
+  const filterStatusRef = useRef(filterStatus)
+  const filterInternacionalRef = useRef(filterInternacional)
+  searchRef.current = search
+  filterStatusRef.current = filterStatus
+  filterInternacionalRef.current = filterInternacional
+
+  const load = useCallback(async (p: number, s: string, fs: string, fi: string) => {
     setLoading(true)
     let q = (supabase as any)
       .from('prompts')
-      .select('*, areas_direito(nome), categorias_principais(nome), profiles(full_name)', { count: 'exact' })
+      .select('*, areas_direito(nome), categorias_principais(nome), profiles!autor_id(full_name)', { count: 'exact' })
       .order('created_at', { ascending: false })
       .range(p * PAGE_SIZE, p * PAGE_SIZE + PAGE_SIZE - 1)
-    if (search) q = q.or(`titulo.ilike.%${search}%,texto_completo.ilike.%${search}%`)
-    if (filterStatus) q = q.eq('status', filterStatus)
+    if (s) q = q.or(`titulo.ilike.%${s}%,texto_completo.ilike.%${s}%`)
+    if (fs) q = q.eq('status', fs)
+    if (fi === 'sim') q = q.eq('internacional', true)
+    if (fi === 'nao') q = q.eq('internacional', false)
     const { data: rows, count } = await q
     setData(rows ?? [])
     setTotal(count ?? 0)
     setLoading(false)
-  }, [search, filterStatus])
+  }, [])
 
-  useEffect(() => { setPage(0); load(0) }, [search, filterStatus])
-  useEffect(() => { load(page) }, [page])
+  useEffect(() => {
+    setPage(0)
+    load(0, search, filterStatus, filterInternacional)
+  }, [search, filterStatus, filterInternacional])
+
+  useEffect(() => {
+    load(page, searchRef.current, filterStatusRef.current, filterInternacionalRef.current)
+  }, [page])
 
   const totalPages = Math.ceil(total / PAGE_SIZE)
 
@@ -271,6 +297,8 @@ function PromptsTab({ areas, categorias, subcategorias }: { areas: Area[]; categ
       categoria_id: row.categoria_id ?? '',
       subcategoria_id: row.subcategoria_id ?? '',
       tags: Array.isArray(row.tags) ? row.tags.join(', ') : '',
+      internacional: row.internacional ?? false,
+      idioma: row.idioma ?? '',
     })
   }
 
@@ -286,16 +314,18 @@ function PromptsTab({ areas, categorias, subcategorias }: { areas: Area[]; categ
       categoria_id: editForm.categoria_id || null,
       subcategoria_id: editForm.subcategoria_id || null,
       tags: editForm.tags.split(',').map((t: string) => t.trim()).filter(Boolean),
+      internacional: editForm.internacional,
+      idioma: editForm.internacional ? (editForm.idioma || null) : null,
     }).eq('id', editing.id)
     setEditing(null)
     setSaving(false)
-    load(page)
+    load(page, searchRef.current, filterStatusRef.current, filterInternacionalRef.current)
   }
 
   const handleDelete = async (id: string, titulo: string) => {
     if (!confirm(`Deletar "${titulo}"?`)) return
     await (supabase as any).from('prompts').delete().eq('id', id)
-    load(page)
+    load(page, searchRef.current, filterStatusRef.current, filterInternacionalRef.current)
   }
 
   const exportAll = async () => {
@@ -303,11 +333,17 @@ function PromptsTab({ areas, categorias, subcategorias }: { areas: Area[]; categ
     const { data: all } = await (supabase as any).from('prompts').select('*, areas_direito(nome), categorias_principais(nome), subcategorias(nome)')
     if (!all) return
     const rows = all.map((p: any) => ({
-      Título: p.titulo, Descrição: p.descricao_curta ?? '',
+      Título: p.titulo,
+      Descrição: p.descricao_curta ?? '',
       'Prompt Completo': p.texto_completo,
-      Categoria: p.categorias_principais?.nome ?? '', Subcategoria: p.subcategorias?.nome ?? '',
-      Área: p.areas_direito?.nome ?? '', Tags: Array.isArray(p.tags) ? p.tags.join(', ') : '',
-      Status: p.status, 'Data': new Date(p.created_at).toLocaleDateString('pt-BR'),
+      Categoria: p.categorias_principais?.nome ?? '',
+      Subcategoria: p.subcategorias?.nome ?? '',
+      Área: p.areas_direito?.nome ?? '',
+      Tags: Array.isArray(p.tags) ? p.tags.join(', ') : '',
+      Status: p.status,
+      Internacional: p.internacional ? 'Sim' : 'Não',
+      Idioma: p.idioma ?? '',
+      Data: new Date(p.created_at).toLocaleDateString('pt-BR'),
     }))
     const ws = XLSX.utils.json_to_sheet(rows)
     const wb = XLSX.utils.book_new()
@@ -335,6 +371,12 @@ function PromptsTab({ areas, categorias, subcategorias }: { areas: Area[]; categ
           <option value="pendente">Pendente</option>
           <option value="inativo">Inativo</option>
         </select>
+        <select value={filterInternacional} onChange={e => setFilterInternacional(e.target.value)}
+          className="px-3 py-2 rounded-lg bg-zinc-900 border border-zinc-800 text-zinc-300 text-sm focus:outline-none">
+          <option value="">Nacional + Internacional</option>
+          <option value="nao">Somente nacionais</option>
+          <option value="sim">Somente internacionais</option>
+        </select>
         <span className="text-xs text-zinc-500">{total} prompts</span>
         <button onClick={exportAll} className="px-3 py-2 rounded-lg border border-zinc-700 text-zinc-400 text-xs hover:text-white hover:border-zinc-500 transition-colors">
           Exportar Excel
@@ -348,14 +390,15 @@ function PromptsTab({ areas, categorias, subcategorias }: { areas: Area[]; categ
               <th className="text-left px-4 py-3 text-xs font-medium text-zinc-500">Título</th>
               <th className="text-left px-4 py-3 text-xs font-medium text-zinc-500 hidden md:table-cell">Autor</th>
               <th className="text-left px-4 py-3 text-xs font-medium text-zinc-500">Status</th>
+              <th className="text-left px-4 py-3 text-xs font-medium text-zinc-500 hidden lg:table-cell">Origem</th>
               <th className="text-right px-4 py-3 text-xs font-medium text-zinc-500">Ações</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-zinc-800/50">
             {loading ? (
-              <tr><td colSpan={4} className="px-4 py-10 text-center text-zinc-500 text-sm">Carregando...</td></tr>
+              <tr><td colSpan={5} className="px-4 py-10 text-center text-zinc-500 text-sm">Carregando...</td></tr>
             ) : data.length === 0 ? (
-              <tr><td colSpan={4} className="px-4 py-10 text-center text-zinc-500 text-sm">Nenhum prompt encontrado</td></tr>
+              <tr><td colSpan={5} className="px-4 py-10 text-center text-zinc-500 text-sm">Nenhum prompt encontrado</td></tr>
             ) : data.map(row => (
               <tr key={row.id} className="hover:bg-zinc-900/30 transition-colors">
                 <td className="px-4 py-3">
@@ -366,9 +409,17 @@ function PromptsTab({ areas, categorias, subcategorias }: { areas: Area[]; categ
                   <span className="text-xs text-zinc-400">{row.profiles?.full_name ?? '—'}</span>
                 </td>
                 <td className="px-4 py-3"><StatusBadge status={row.status} /></td>
+                <td className="px-4 py-3 hidden lg:table-cell">
+                  {row.internacional ? (
+                    <span className="text-xs px-1.5 py-0.5 rounded bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
+                      Intl{row.idioma ? ` · ${row.idioma.toUpperCase()}` : ''}
+                    </span>
+                  ) : (
+                    <span className="text-xs text-zinc-600">Nacional</span>
+                  )}
+                </td>
                 <td className="px-4 py-3 text-right">
                   <div className="flex items-center justify-end gap-3">
-                    <Link href={`/prompts/${row.id}`} className="text-xs text-zinc-400 hover:text-white transition-colors">Ver</Link>
                     <button onClick={() => openEdit(row)} className="text-xs text-zinc-400 hover:text-white transition-colors">Editar</button>
                     <button onClick={() => handleDelete(row.id, row.titulo)} className="text-xs text-red-400/70 hover:text-red-400 transition-colors">Deletar</button>
                   </div>
@@ -392,13 +443,13 @@ function PromptsTab({ areas, categorias, subcategorias }: { areas: Area[]; categ
       )}
 
       {editing && (
-        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 overflow-y-auto">
+        <div className="fixed inset-0 bg-black/60 z-50 flex items-start justify-center p-4 overflow-y-auto">
           <div className="bg-zinc-900 rounded-xl border border-zinc-700 w-full max-w-2xl my-4">
             <div className="flex items-center justify-between px-6 py-4 border-b border-zinc-800">
               <h3 className="text-white font-semibold">Editar prompt</h3>
               <button onClick={() => setEditing(null)} className="text-zinc-500 hover:text-white text-xl leading-none">×</button>
             </div>
-            <div className="p-6 space-y-4 max-h-[65vh] overflow-y-auto">
+            <div className="p-6 space-y-4">
               <div>
                 <label className="block text-xs text-zinc-400 mb-1.5">Título</label>
                 <input value={editForm.titulo} onChange={e => setEditForm({ ...editForm, titulo: e.target.value })}
@@ -456,6 +507,31 @@ function PromptsTab({ areas, categorias, subcategorias }: { areas: Area[]; categ
                 <input value={editForm.tags} onChange={e => setEditForm({ ...editForm, tags: e.target.value })}
                   className="w-full px-3 py-2 rounded-lg bg-zinc-800 border border-zinc-700 text-white text-sm focus:outline-none" />
               </div>
+              {/* Internacional */}
+              <div className="rounded-lg border border-zinc-700 p-4 space-y-3 bg-zinc-800/30">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-white font-medium">Prompt Internacional</p>
+                    <p className="text-xs text-zinc-500 mt-0.5">Marque se este prompt é de origem estrangeira</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setEditForm({ ...editForm, internacional: !editForm.internacional, idioma: !editForm.internacional ? '' : editForm.idioma })}
+                    className={`relative w-11 h-6 rounded-full transition-colors ${editForm.internacional ? 'bg-indigo-500' : 'bg-zinc-700'}`}>
+                    <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full transition-transform ${editForm.internacional ? 'translate-x-5' : 'translate-x-0'}`} />
+                  </button>
+                </div>
+                {editForm.internacional && (
+                  <div>
+                    <label className="block text-xs text-zinc-400 mb-1.5">Idioma</label>
+                    <select value={editForm.idioma} onChange={e => setEditForm({ ...editForm, idioma: e.target.value })}
+                      className="w-full px-3 py-2 rounded-lg bg-zinc-800 border border-zinc-700 text-zinc-300 text-sm focus:outline-none">
+                      <option value="">— Selecionar idioma —</option>
+                      {IDIOMAS.map(l => <option key={l.code} value={l.code}>{l.label}</option>)}
+                    </select>
+                  </div>
+                )}
+              </div>
             </div>
             <div className="px-6 py-4 border-t border-zinc-800 flex justify-end gap-3">
               <button onClick={() => setEditing(null)} className="px-4 py-2 text-sm text-zinc-400 hover:text-white transition-colors">Cancelar</button>
@@ -477,6 +553,11 @@ function UsuariosTab({ profiles, currentUserId, onReload }: { profiles: Profile[
   const supabase = createClient()
   const [editing, setEditing] = useState<Profile | null>(null)
   const [editRole, setEditRole] = useState('')
+  const [showCreate, setShowCreate] = useState(false)
+  const [createForm, setCreateForm] = useState({ email: '', password: '', full_name: '', role: 'user' })
+  const [creating, setCreating] = useState(false)
+  const [createError, setCreateError] = useState('')
+  const [deleting, setDeleting] = useState<string | null>(null)
 
   const handleRoleChange = async () => {
     if (!editing) return
@@ -485,42 +566,92 @@ function UsuariosTab({ profiles, currentUserId, onReload }: { profiles: Profile[
     onReload()
   }
 
+  const handleCreate = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setCreateError('')
+    setCreating(true)
+    const { error } = await supabase.auth.signUp({
+      email: createForm.email,
+      password: createForm.password,
+      options: { data: { full_name: createForm.full_name } },
+    })
+    if (error) {
+      setCreateError(error.message)
+      setCreating(false)
+      return
+    }
+    if (createForm.role === 'admin') {
+      await new Promise(r => setTimeout(r, 1000))
+      const { data: np } = await (supabase as any).from('profiles').select('id').eq('email', createForm.email).single()
+      if (np) await (supabase as any).from('profiles').update({ role: 'admin' }).eq('id', np.id)
+    }
+    setShowCreate(false)
+    setCreateForm({ email: '', password: '', full_name: '', role: 'user' })
+    setCreating(false)
+    onReload()
+  }
+
+  const handleDelete = async (p: Profile) => {
+    if (!confirm(`Deletar o usuário "${p.full_name || p.email}"? Esta ação não pode ser desfeita.`)) return
+    setDeleting(p.id)
+    await (supabase as any).from('profiles').delete().eq('id', p.id)
+    setDeleting(null)
+    onReload()
+  }
+
   return (
-    <div className="rounded-xl border border-zinc-800 overflow-hidden">
-      <table className="w-full text-sm">
-        <thead>
-          <tr className="bg-zinc-900/50 border-b border-zinc-800">
-            <th className="text-left px-4 py-3 text-xs font-medium text-zinc-500">Nome</th>
-            <th className="text-left px-4 py-3 text-xs font-medium text-zinc-500">Email</th>
-            <th className="text-left px-4 py-3 text-xs font-medium text-zinc-500">Perfil</th>
-            <th className="text-left px-4 py-3 text-xs font-medium text-zinc-500 hidden md:table-cell">Cadastro</th>
-            <th className="text-right px-4 py-3 text-xs font-medium text-zinc-500">Ações</th>
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-zinc-800/50">
-          {profiles.map(p => (
-            <tr key={p.id} className="hover:bg-zinc-900/30 transition-colors">
-              <td className="px-4 py-3 text-white text-sm font-medium">{p.full_name || '—'}</td>
-              <td className="px-4 py-3 text-zinc-400 text-xs">{p.email}</td>
-              <td className="px-4 py-3">
-                <span className={`px-2 py-0.5 rounded-full text-xs border ${p.role === 'admin' ? 'bg-amber-500/10 text-amber-400 border-amber-500/20' : 'bg-zinc-800 text-zinc-400 border-zinc-700'}`}>
-                  {p.role}
-                </span>
-              </td>
-              <td className="px-4 py-3 text-zinc-500 text-xs hidden md:table-cell">{new Date(p.created_at).toLocaleDateString('pt-BR')}</td>
-              <td className="px-4 py-3 text-right">
-                {p.id !== currentUserId && (
-                  <button onClick={() => { setEditing(p); setEditRole(p.role) }} className="text-xs text-zinc-400 hover:text-white transition-colors">Editar</button>
-                )}
-              </td>
+    <div className="space-y-4">
+      <div className="flex justify-end">
+        <button onClick={() => setShowCreate(true)}
+          className="px-4 py-2 rounded-lg bg-white text-zinc-950 font-semibold text-sm hover:bg-zinc-100 transition-colors">
+          + Criar usuário
+        </button>
+      </div>
+
+      <div className="rounded-xl border border-zinc-800 overflow-hidden">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="bg-zinc-900/50 border-b border-zinc-800">
+              <th className="text-left px-4 py-3 text-xs font-medium text-zinc-500">Nome</th>
+              <th className="text-left px-4 py-3 text-xs font-medium text-zinc-500">Email</th>
+              <th className="text-left px-4 py-3 text-xs font-medium text-zinc-500">Perfil</th>
+              <th className="text-left px-4 py-3 text-xs font-medium text-zinc-500 hidden md:table-cell">Cadastro</th>
+              <th className="text-right px-4 py-3 text-xs font-medium text-zinc-500">Ações</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody className="divide-y divide-zinc-800/50">
+            {profiles.map(p => (
+              <tr key={p.id} className={`hover:bg-zinc-900/30 transition-colors ${deleting === p.id ? 'opacity-40' : ''}`}>
+                <td className="px-4 py-3 text-white text-sm font-medium">{p.full_name || '—'}</td>
+                <td className="px-4 py-3 text-zinc-400 text-xs">{p.email}</td>
+                <td className="px-4 py-3">
+                  <span className={`px-2 py-0.5 rounded-full text-xs border ${p.role === 'admin' ? 'bg-amber-500/10 text-amber-400 border-amber-500/20' : 'bg-zinc-800 text-zinc-400 border-zinc-700'}`}>
+                    {p.role}
+                  </span>
+                </td>
+                <td className="px-4 py-3 text-zinc-500 text-xs hidden md:table-cell">{new Date(p.created_at).toLocaleDateString('pt-BR')}</td>
+                <td className="px-4 py-3 text-right">
+                  <div className="flex items-center justify-end gap-3">
+                    {p.id !== currentUserId && (
+                      <>
+                        <button onClick={() => { setEditing(p); setEditRole(p.role) }} className="text-xs text-zinc-400 hover:text-white transition-colors">Editar</button>
+                        <button onClick={() => handleDelete(p)} className="text-xs text-red-400/70 hover:text-red-400 transition-colors">Apagar</button>
+                      </>
+                    )}
+                    {p.id === currentUserId && <span className="text-xs text-zinc-600">você</span>}
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Modal editar role */}
       {editing && (
         <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
           <div className="bg-zinc-900 rounded-xl border border-zinc-700 w-full max-w-sm p-6 space-y-4">
-            <h3 className="text-white font-semibold">Editar: {editing.full_name}</h3>
+            <h3 className="text-white font-semibold">Editar: {editing.full_name || editing.email}</h3>
             <div>
               <label className="block text-xs text-zinc-400 mb-1.5">Nível de acesso</label>
               <select value={editRole} onChange={e => setEditRole(e.target.value)}
@@ -533,6 +664,56 @@ function UsuariosTab({ profiles, currentUserId, onReload }: { profiles: Profile[
               <button onClick={() => setEditing(null)} className="px-4 py-2 text-sm text-zinc-400 hover:text-white transition-colors">Cancelar</button>
               <button onClick={handleRoleChange} className="px-4 py-2 rounded-lg bg-white text-zinc-950 font-semibold text-sm hover:bg-zinc-100 transition-colors">Salvar</button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal criar usuário */}
+      {showCreate && (
+        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
+          <div className="bg-zinc-900 rounded-xl border border-zinc-700 w-full max-w-sm">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-zinc-800">
+              <h3 className="text-white font-semibold">Criar novo usuário</h3>
+              <button onClick={() => setShowCreate(false)} className="text-zinc-500 hover:text-white text-xl leading-none">×</button>
+            </div>
+            <form onSubmit={handleCreate} className="p-6 space-y-4">
+              <div>
+                <label className="block text-xs text-zinc-400 mb-1.5">Nome completo</label>
+                <input required value={createForm.full_name} onChange={e => setCreateForm({ ...createForm, full_name: e.target.value })}
+                  className="w-full px-3 py-2 rounded-lg bg-zinc-800 border border-zinc-700 text-white text-sm focus:outline-none"
+                  placeholder="Dr. João Silva" />
+              </div>
+              <div>
+                <label className="block text-xs text-zinc-400 mb-1.5">Email</label>
+                <input required type="email" value={createForm.email} onChange={e => setCreateForm({ ...createForm, email: e.target.value })}
+                  className="w-full px-3 py-2 rounded-lg bg-zinc-800 border border-zinc-700 text-white text-sm focus:outline-none"
+                  placeholder="usuario@email.com" />
+              </div>
+              <div>
+                <label className="block text-xs text-zinc-400 mb-1.5">Senha inicial</label>
+                <input required type="password" minLength={6} value={createForm.password} onChange={e => setCreateForm({ ...createForm, password: e.target.value })}
+                  className="w-full px-3 py-2 rounded-lg bg-zinc-800 border border-zinc-700 text-white text-sm focus:outline-none"
+                  placeholder="mínimo 6 caracteres" />
+              </div>
+              <div>
+                <label className="block text-xs text-zinc-400 mb-1.5">Perfil</label>
+                <select value={createForm.role} onChange={e => setCreateForm({ ...createForm, role: e.target.value })}
+                  className="w-full px-3 py-2 rounded-lg bg-zinc-800 border border-zinc-700 text-zinc-300 text-sm focus:outline-none">
+                  <option value="user">Usuário</option>
+                  <option value="admin">Administrador</option>
+                </select>
+              </div>
+              {createError && (
+                <p className="text-xs text-red-400 bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2">{createError}</p>
+              )}
+              <div className="flex gap-3 justify-end pt-2">
+                <button type="button" onClick={() => setShowCreate(false)} className="px-4 py-2 text-sm text-zinc-400 hover:text-white transition-colors">Cancelar</button>
+                <button type="submit" disabled={creating}
+                  className="px-4 py-2 rounded-lg bg-white text-zinc-950 font-semibold text-sm hover:bg-zinc-100 transition-colors disabled:opacity-50">
+                  {creating ? 'Criando...' : 'Criar usuário'}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

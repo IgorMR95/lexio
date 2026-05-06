@@ -27,6 +27,20 @@ export function NovoPromptForm({ categorias, subcategorias, subniveis, areas, us
   const [subnivelId, setSubnivelId] = useState('')
   const [areaDireitoId, setAreaDireitoId] = useState('')
   const [tagsInput, setTagsInput] = useState('')
+  const [internacional, setInternacional] = useState(false)
+  const [idioma, setIdioma] = useState('')
+
+  const IDIOMAS = [
+    { code: 'en', label: 'Inglês (EN)' },
+    { code: 'es', label: 'Espanhol (ES)' },
+    { code: 'fr', label: 'Francês (FR)' },
+    { code: 'de', label: 'Alemão (DE)' },
+    { code: 'it', label: 'Italiano (IT)' },
+    { code: 'pt-PT', label: 'Português (PT-PT)' },
+    { code: 'zh', label: 'Chinês (ZH)' },
+    { code: 'ja', label: 'Japonês (JA)' },
+    { code: 'ar', label: 'Árabe (AR)' },
+  ]
 
   const filteredSubcategorias = categoriaId
     ? subcategorias.filter(s => s.categoria_id === categoriaId)
@@ -54,6 +68,8 @@ export function NovoPromptForm({ categorias, subcategorias, subniveis, areas, us
       tags,
       autor_id: userId,
       status: 'pendente',
+      internacional,
+      idioma: internacional ? (idioma || null) : null,
     })
 
     if (err) {
@@ -163,6 +179,35 @@ export function NovoPromptForm({ categorias, subcategorias, subniveis, areas, us
           className="w-full px-3 py-2.5 rounded-lg bg-zinc-900 border border-zinc-800 text-white placeholder-zinc-600 focus:outline-none focus:border-zinc-600 text-sm"
           placeholder="contrato, empresarial, análise"
         />
+      </div>
+
+      {/* Internacional */}
+      <div className="rounded-lg border border-zinc-800 p-4 space-y-3">
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-sm text-white font-medium">Prompt Internacional</p>
+            <p className="text-xs text-zinc-500 mt-0.5">Marque se este prompt é de origem estrangeira</p>
+          </div>
+          <button
+            type="button"
+            onClick={() => { setInternacional(!internacional); setIdioma('') }}
+            className={`relative w-11 h-6 rounded-full transition-colors ${internacional ? 'bg-indigo-500' : 'bg-zinc-700'}`}>
+            <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full transition-transform ${internacional ? 'translate-x-5' : 'translate-x-0'}`} />
+          </button>
+        </div>
+        {internacional && (
+          <div>
+            <label className="block text-xs text-zinc-400 mb-1.5">Idioma</label>
+            <select
+              value={idioma}
+              onChange={e => setIdioma(e.target.value)}
+              className="w-full px-3 py-2.5 rounded-lg bg-zinc-900 border border-zinc-800 text-zinc-300 text-sm focus:outline-none focus:border-zinc-600"
+            >
+              <option value="">— Selecionar idioma —</option>
+              {IDIOMAS.map(l => <option key={l.code} value={l.code}>{l.label}</option>)}
+            </select>
+          </div>
+        )}
       </div>
 
       {error && (

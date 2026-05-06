@@ -140,6 +140,8 @@ export interface Database {
           status: string
           observacoes: string | null
           visualizacoes: number
+          internacional: boolean
+          idioma: string | null
           created_at: string
           updated_at: string
         }
@@ -155,6 +157,8 @@ export interface Database {
           autor_id?: string | null
           status?: string
           observacoes?: string | null
+          internacional?: boolean
+          idioma?: string | null
         }
         Update: {
           titulo?: string
@@ -167,6 +171,8 @@ export interface Database {
           tags?: string[]
           status?: string
           observacoes?: string | null
+          internacional?: boolean
+          idioma?: string | null
         }
       }
     }

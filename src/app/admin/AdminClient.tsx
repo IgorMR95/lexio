@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import Link from 'next/link'
 
@@ -23,20 +23,23 @@ interface Props {
 }
 
 const TABS = [
+  { id: 'revisao', label: 'Revisão' },
+  { id: 'prompts', label: 'Prompts' },
   { id: 'usuarios', label: 'Usuários' },
+  { id: 'estrutura', label: 'Estrutura' },
+  { id: 'areas', label: 'Áreas' },
   { id: 'auditoria', label: 'Auditoria' },
-  { id: 'estrutura', label: 'Categorias / Estrutura' },
-  { id: 'areas', label: 'Áreas do Direito' },
 ]
 
 export function AdminClient({ currentUserId, profiles: initialProfiles, auditLogs, categorias: initialCategorias, subcategorias: initialSubcategorias, subniveis: initialSubniveis, areas: initialAreas, stats }: Props) {
   const supabase = createClient()
-  const [activeTab, setActiveTab] = useState('usuarios')
+  const [activeTab, setActiveTab] = useState('revisao')
   const [profiles, setProfiles] = useState(initialProfiles)
   const [categorias, setCategorias] = useState(initialCategorias)
   const [subcategorias, setSubcategorias] = useState(initialSubcategorias)
   const [subniveis, setSubniveis] = useState(initialSubniveis)
   const [areas, setAreas] = useState(initialAreas)
+  const [pendentes, setPendentes] = useState(stats.pendentes)
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
@@ -46,11 +49,8 @@ export function AdminClient({ currentUserId, profiles: initialProfiles, auditLog
             <span className="px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 text-xs border border-amber-500/20">Admin</span>
             <h1 className="text-2xl font-bold text-white">Administração</h1>
           </div>
-          <p className="text-zinc-500 text-sm">Gerenciamento do sistema Lexio</p>
+          <p className="text-zinc-500 text-sm">Gerenciamento do sistema</p>
         </div>
-        <Link href="/admin/dados" className="px-4 py-2 rounded-lg border border-zinc-700 text-zinc-300 text-sm hover:text-white hover:border-zinc-500 transition-colors">
-          Gestão de Dados →
-        </Link>
       </div>
 
       {/* Stats */}
@@ -59,9 +59,9 @@ export function AdminClient({ currentUserId, profiles: initialProfiles, auditLog
           <p className="text-xs text-zinc-500 mb-1">Total de prompts</p>
           <p className="text-2xl font-bold text-white">{stats.totalPrompts}</p>
         </div>
-        <div className="p-4 rounded-xl border border-zinc-800 bg-zinc-900/50">
-          <p className="text-xs text-zinc-500 mb-1">Pendentes</p>
-          <p className="text-2xl font-bold text-amber-400">{stats.pendentes}</p>
+        <div className="p-4 rounded-xl border border-zinc-800 bg-zinc-900/50 cursor-pointer" onClick={() => setActiveTab('revisao')}>
+          <p className="text-xs text-zinc-500 mb-1">Pendentes revisão</p>
+          <p className="text-2xl font-bold text-amber-400">{pendentes}</p>
         </div>
         <div className="p-4 rounded-xl border border-zinc-800 bg-zinc-900/50">
           <p className="text-xs text-zinc-500 mb-1">Usuários</p>
@@ -75,17 +75,25 @@ export function AdminClient({ currentUserId, profiles: initialProfiles, auditLog
           <button key={tab.id} onClick={() => setActiveTab(tab.id)}
             className={`px-4 py-2 rounded-md text-sm font-medium transition-colors whitespace-nowrap ${activeTab === tab.id ? 'bg-white text-zinc-950' : 'text-zinc-400 hover:text-white'}`}>
             {tab.label}
+            {tab.id === 'revisao' && pendentes > 0 && (
+              <span className="ml-1.5 px-1.5 py-0.5 rounded-full bg-amber-500/20 text-amber-400 text-xs">{pendentes}</span>
+            )}
           </button>
         ))}
       </div>
 
+      {activeTab === 'revisao' && (
+        <RevisaoTab onCountChange={setPendentes} areas={areas} categorias={categorias} />
+      )}
+      {activeTab === 'prompts' && (
+        <PromptsTab areas={areas} categorias={categorias} subcategorias={subcategorias} />
+      )}
       {activeTab === 'usuarios' && (
         <UsuariosTab profiles={profiles} currentUserId={currentUserId} onReload={async () => {
           const { data } = await supabase.from('profiles').select('id, full_name, email, role, created_at').order('created_at', { ascending: false })
           setProfiles(data ?? [])
         }} />
       )}
-      {activeTab === 'auditoria' && <AuditoriaTab logs={auditLogs} />}
       {activeTab === 'estrutura' && (
         <EstruturaTab
           categorias={categorias} subcategorias={subcategorias} subniveis={subniveis}
@@ -106,6 +114,358 @@ export function AdminClient({ currentUserId, profiles: initialProfiles, auditLog
           const { data } = await supabase.from('areas_direito').select('*').order('ordem')
           setAreas(data ?? [])
         }} />
+      )}
+      {activeTab === 'auditoria' && <AuditoriaTab logs={auditLogs} />}
+    </div>
+  )
+}
+
+// ── Revisão ───────────────────────────────────────────────────────────────────
+
+function RevisaoTab({ onCountChange, areas, categorias }: { onCountChange: (n: number) => void; areas: Area[]; categorias: Categoria[] }) {
+  const supabase = createClient()
+  const [prompts, setPrompts] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
+  const [expanded, setExpanded] = useState<string | null>(null)
+
+  const load = useCallback(async () => {
+    setLoading(true)
+    const { data } = await (supabase as any)
+      .from('prompts')
+      .select('*, areas_direito(nome), categorias_principais(nome), profiles(full_name, email)')
+      .eq('status', 'pendente')
+      .order('created_at', { ascending: true })
+    setPrompts(data ?? [])
+    onCountChange(data?.length ?? 0)
+    setLoading(false)
+  }, [])
+
+  useEffect(() => { load() }, [])
+
+  const aprovar = async (id: string) => {
+    await (supabase as any).from('prompts').update({ status: 'aprovado' }).eq('id', id)
+    load()
+  }
+
+  const rejeitar = async (id: string) => {
+    if (!confirm('Rejeitar e remover este prompt?')) return
+    await (supabase as any).from('prompts').delete().eq('id', id)
+    load()
+  }
+
+  const marcarAtivo = async (id: string) => {
+    await (supabase as any).from('prompts').update({ status: 'ativo' }).eq('id', id)
+    load()
+  }
+
+  if (loading) return <div className="text-center py-16 text-zinc-500 text-sm">Carregando...</div>
+
+  if (prompts.length === 0) {
+    return (
+      <div className="text-center py-16 border border-dashed border-zinc-800 rounded-xl">
+        <p className="text-zinc-400 font-medium">Nenhum prompt pendente</p>
+        <p className="text-zinc-600 text-sm mt-1">Todos os envios foram revisados.</p>
+      </div>
+    )
+  }
+
+  return (
+    <div className="space-y-3">
+      <p className="text-xs text-zinc-500">{prompts.length} prompt(s) aguardando revisão — mais antigos primeiro</p>
+      {prompts.map(p => (
+        <div key={p.id} className="rounded-xl border border-zinc-800 bg-zinc-900/30 overflow-hidden">
+          <div className="px-4 py-3 flex items-start justify-between gap-4">
+            <div className="flex-1 min-w-0">
+              <p className="text-white font-medium text-sm">{p.titulo}</p>
+              <div className="flex items-center gap-3 mt-1 flex-wrap">
+                <span className="text-xs text-zinc-500">
+                  por <span className="text-zinc-400">{p.profiles?.full_name ?? p.profiles?.email ?? '—'}</span>
+                </span>
+                {p.areas_direito?.nome && <span className="text-xs text-zinc-600">{p.areas_direito.nome}</span>}
+                {p.categorias_principais?.nome && <span className="text-xs text-zinc-600">{p.categorias_principais.nome}</span>}
+                <span className="text-xs text-zinc-600">{new Date(p.created_at).toLocaleDateString('pt-BR')}</span>
+              </div>
+              {p.descricao_curta && <p className="text-xs text-zinc-500 mt-1 italic">{p.descricao_curta}</p>}
+            </div>
+            <div className="flex items-center gap-2 flex-shrink-0">
+              <button onClick={() => setExpanded(expanded === p.id ? null : p.id)}
+                className="text-xs text-zinc-500 hover:text-white transition-colors px-2 py-1 rounded border border-zinc-800 hover:border-zinc-600">
+                {expanded === p.id ? 'Fechar' : 'Ver texto'}
+              </button>
+              <button onClick={() => aprovar(p.id)}
+                className="text-xs px-3 py-1.5 rounded-lg bg-green-500/10 text-green-400 border border-green-500/20 hover:bg-green-500/20 transition-colors font-medium">
+                Aprovar
+              </button>
+              <button onClick={() => marcarAtivo(p.id)}
+                className="text-xs px-3 py-1.5 rounded-lg bg-blue-500/10 text-blue-400 border border-blue-500/20 hover:bg-blue-500/20 transition-colors font-medium">
+                Ativar
+              </button>
+              <button onClick={() => rejeitar(p.id)}
+                className="text-xs px-3 py-1.5 rounded-lg bg-red-500/10 text-red-400 border border-red-500/20 hover:bg-red-500/20 transition-colors font-medium">
+                Rejeitar
+              </button>
+            </div>
+          </div>
+          {expanded === p.id && (
+            <div className="px-4 pb-4">
+              <pre className="whitespace-pre-wrap text-xs text-zinc-300 bg-zinc-950 rounded-lg p-4 border border-zinc-800 font-mono leading-relaxed max-h-60 overflow-y-auto">
+                {p.texto_completo}
+              </pre>
+              {p.observacoes && (
+                <p className="text-xs text-amber-400 mt-2 bg-amber-500/5 border border-amber-500/10 rounded px-3 py-2">
+                  Obs. do autor: {p.observacoes}
+                </p>
+              )}
+            </div>
+          )}
+        </div>
+      ))}
+    </div>
+  )
+}
+
+// ── Prompts CRUD ──────────────────────────────────────────────────────────────
+
+const PAGE_SIZE = 20
+
+function PromptsTab({ areas, categorias, subcategorias }: { areas: Area[]; categorias: Categoria[]; subcategorias: Subcategoria[] }) {
+  const supabase = createClient()
+  const [data, setData] = useState<any[]>([])
+  const [total, setTotal] = useState(0)
+  const [page, setPage] = useState(0)
+  const [loading, setLoading] = useState(true)
+  const [search, setSearch] = useState('')
+  const [filterStatus, setFilterStatus] = useState('')
+  const [editing, setEditing] = useState<any>(null)
+  const [editForm, setEditForm] = useState<any>({})
+  const [saving, setSaving] = useState(false)
+
+  const load = useCallback(async (p = 0) => {
+    setLoading(true)
+    let q = (supabase as any)
+      .from('prompts')
+      .select('*, areas_direito(nome), categorias_principais(nome), profiles(full_name)', { count: 'exact' })
+      .order('created_at', { ascending: false })
+      .range(p * PAGE_SIZE, p * PAGE_SIZE + PAGE_SIZE - 1)
+    if (search) q = q.or(`titulo.ilike.%${search}%,texto_completo.ilike.%${search}%`)
+    if (filterStatus) q = q.eq('status', filterStatus)
+    const { data: rows, count } = await q
+    setData(rows ?? [])
+    setTotal(count ?? 0)
+    setLoading(false)
+  }, [search, filterStatus])
+
+  useEffect(() => { setPage(0); load(0) }, [search, filterStatus])
+  useEffect(() => { load(page) }, [page])
+
+  const totalPages = Math.ceil(total / PAGE_SIZE)
+
+  const openEdit = (row: any) => {
+    setEditing(row)
+    setEditForm({
+      titulo: row.titulo,
+      descricao_curta: row.descricao_curta ?? '',
+      texto_completo: row.texto_completo,
+      status: row.status,
+      area_direito_id: row.area_direito_id ?? '',
+      categoria_id: row.categoria_id ?? '',
+      subcategoria_id: row.subcategoria_id ?? '',
+      tags: Array.isArray(row.tags) ? row.tags.join(', ') : '',
+    })
+  }
+
+  const saveEdit = async () => {
+    if (!editing) return
+    setSaving(true)
+    await (supabase as any).from('prompts').update({
+      titulo: editForm.titulo,
+      descricao_curta: editForm.descricao_curta || null,
+      texto_completo: editForm.texto_completo,
+      status: editForm.status,
+      area_direito_id: editForm.area_direito_id || null,
+      categoria_id: editForm.categoria_id || null,
+      subcategoria_id: editForm.subcategoria_id || null,
+      tags: editForm.tags.split(',').map((t: string) => t.trim()).filter(Boolean),
+    }).eq('id', editing.id)
+    setEditing(null)
+    setSaving(false)
+    load(page)
+  }
+
+  const handleDelete = async (id: string, titulo: string) => {
+    if (!confirm(`Deletar "${titulo}"?`)) return
+    await (supabase as any).from('prompts').delete().eq('id', id)
+    load(page)
+  }
+
+  const exportAll = async () => {
+    const XLSX = await import('xlsx')
+    const { data: all } = await (supabase as any).from('prompts').select('*, areas_direito(nome), categorias_principais(nome), subcategorias(nome)')
+    if (!all) return
+    const rows = all.map((p: any) => ({
+      Título: p.titulo, Descrição: p.descricao_curta ?? '',
+      'Prompt Completo': p.texto_completo,
+      Categoria: p.categorias_principais?.nome ?? '', Subcategoria: p.subcategorias?.nome ?? '',
+      Área: p.areas_direito?.nome ?? '', Tags: Array.isArray(p.tags) ? p.tags.join(', ') : '',
+      Status: p.status, 'Data': new Date(p.created_at).toLocaleDateString('pt-BR'),
+    }))
+    const ws = XLSX.utils.json_to_sheet(rows)
+    const wb = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(wb, ws, 'Prompts')
+    XLSX.writeFile(wb, `midori-base-${new Date().toISOString().slice(0, 10)}.xlsx`)
+  }
+
+  const filteredSubs = editForm.categoria_id ? subcategorias.filter(s => s.categoria_id === editForm.categoria_id) : subcategorias
+
+  return (
+    <div className="space-y-4">
+      <div className="flex gap-3 items-center flex-wrap">
+        <div className="relative flex-1 min-w-[200px]">
+          <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+          </svg>
+          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Buscar prompts..."
+            className="w-full pl-9 pr-4 py-2 rounded-lg bg-zinc-900 border border-zinc-800 text-white placeholder-zinc-500 focus:outline-none focus:border-zinc-600 text-sm" />
+        </div>
+        <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)}
+          className="px-3 py-2 rounded-lg bg-zinc-900 border border-zinc-800 text-zinc-300 text-sm focus:outline-none">
+          <option value="">Todos os status</option>
+          <option value="aprovado">Aprovado</option>
+          <option value="ativo">Ativo</option>
+          <option value="pendente">Pendente</option>
+          <option value="inativo">Inativo</option>
+        </select>
+        <span className="text-xs text-zinc-500">{total} prompts</span>
+        <button onClick={exportAll} className="px-3 py-2 rounded-lg border border-zinc-700 text-zinc-400 text-xs hover:text-white hover:border-zinc-500 transition-colors">
+          Exportar Excel
+        </button>
+      </div>
+
+      <div className="rounded-xl border border-zinc-800 overflow-hidden">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="bg-zinc-900/50 border-b border-zinc-800">
+              <th className="text-left px-4 py-3 text-xs font-medium text-zinc-500">Título</th>
+              <th className="text-left px-4 py-3 text-xs font-medium text-zinc-500 hidden md:table-cell">Autor</th>
+              <th className="text-left px-4 py-3 text-xs font-medium text-zinc-500">Status</th>
+              <th className="text-right px-4 py-3 text-xs font-medium text-zinc-500">Ações</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-zinc-800/50">
+            {loading ? (
+              <tr><td colSpan={4} className="px-4 py-10 text-center text-zinc-500 text-sm">Carregando...</td></tr>
+            ) : data.length === 0 ? (
+              <tr><td colSpan={4} className="px-4 py-10 text-center text-zinc-500 text-sm">Nenhum prompt encontrado</td></tr>
+            ) : data.map(row => (
+              <tr key={row.id} className="hover:bg-zinc-900/30 transition-colors">
+                <td className="px-4 py-3">
+                  <p className="text-white text-sm font-medium line-clamp-1">{row.titulo}</p>
+                  <p className="text-zinc-600 text-xs mt-0.5">{new Date(row.created_at).toLocaleDateString('pt-BR')}</p>
+                </td>
+                <td className="px-4 py-3 hidden md:table-cell">
+                  <span className="text-xs text-zinc-400">{row.profiles?.full_name ?? '—'}</span>
+                </td>
+                <td className="px-4 py-3"><StatusBadge status={row.status} /></td>
+                <td className="px-4 py-3 text-right">
+                  <div className="flex items-center justify-end gap-3">
+                    <Link href={`/prompts/${row.id}`} className="text-xs text-zinc-400 hover:text-white transition-colors">Ver</Link>
+                    <button onClick={() => openEdit(row)} className="text-xs text-zinc-400 hover:text-white transition-colors">Editar</button>
+                    <button onClick={() => handleDelete(row.id, row.titulo)} className="text-xs text-red-400/70 hover:text-red-400 transition-colors">Deletar</button>
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between">
+          <p className="text-xs text-zinc-500">Mostrando {page * PAGE_SIZE + 1}–{Math.min((page + 1) * PAGE_SIZE, total)} de {total}</p>
+          <div className="flex gap-1">
+            <button onClick={() => setPage(p => Math.max(0, p - 1))} disabled={page === 0}
+              className="px-3 py-1.5 rounded-lg border border-zinc-800 text-zinc-400 text-xs hover:text-white disabled:opacity-30 transition-colors">← Anterior</button>
+            <button onClick={() => setPage(p => Math.min(totalPages - 1, p + 1))} disabled={page >= totalPages - 1}
+              className="px-3 py-1.5 rounded-lg border border-zinc-800 text-zinc-400 text-xs hover:text-white disabled:opacity-30 transition-colors">Próximo →</button>
+          </div>
+        </div>
+      )}
+
+      {editing && (
+        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-zinc-900 rounded-xl border border-zinc-700 w-full max-w-2xl my-4">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-zinc-800">
+              <h3 className="text-white font-semibold">Editar prompt</h3>
+              <button onClick={() => setEditing(null)} className="text-zinc-500 hover:text-white text-xl leading-none">×</button>
+            </div>
+            <div className="p-6 space-y-4 max-h-[65vh] overflow-y-auto">
+              <div>
+                <label className="block text-xs text-zinc-400 mb-1.5">Título</label>
+                <input value={editForm.titulo} onChange={e => setEditForm({ ...editForm, titulo: e.target.value })}
+                  className="w-full px-3 py-2 rounded-lg bg-zinc-800 border border-zinc-700 text-white text-sm focus:outline-none" />
+              </div>
+              <div>
+                <label className="block text-xs text-zinc-400 mb-1.5">Descrição curta</label>
+                <input value={editForm.descricao_curta} onChange={e => setEditForm({ ...editForm, descricao_curta: e.target.value })}
+                  className="w-full px-3 py-2 rounded-lg bg-zinc-800 border border-zinc-700 text-white text-sm focus:outline-none" />
+              </div>
+              <div>
+                <label className="block text-xs text-zinc-400 mb-1.5">Texto completo</label>
+                <textarea rows={8} value={editForm.texto_completo} onChange={e => setEditForm({ ...editForm, texto_completo: e.target.value })}
+                  className="w-full px-3 py-2 rounded-lg bg-zinc-800 border border-zinc-700 text-white text-sm focus:outline-none resize-none font-mono" />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs text-zinc-400 mb-1.5">Status</label>
+                  <select value={editForm.status} onChange={e => setEditForm({ ...editForm, status: e.target.value })}
+                    className="w-full px-3 py-2 rounded-lg bg-zinc-800 border border-zinc-700 text-zinc-300 text-sm focus:outline-none">
+                    <option value="pendente">Pendente</option>
+                    <option value="aprovado">Aprovado</option>
+                    <option value="ativo">Ativo</option>
+                    <option value="inativo">Inativo</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs text-zinc-400 mb-1.5">Área do Direito</label>
+                  <select value={editForm.area_direito_id} onChange={e => setEditForm({ ...editForm, area_direito_id: e.target.value })}
+                    className="w-full px-3 py-2 rounded-lg bg-zinc-800 border border-zinc-700 text-zinc-300 text-sm focus:outline-none">
+                    <option value="">— Sem área —</option>
+                    {areas.map(a => <option key={a.id} value={a.id}>{a.nome}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs text-zinc-400 mb-1.5">Categoria</label>
+                  <select value={editForm.categoria_id} onChange={e => setEditForm({ ...editForm, categoria_id: e.target.value, subcategoria_id: '' })}
+                    className="w-full px-3 py-2 rounded-lg bg-zinc-800 border border-zinc-700 text-zinc-300 text-sm focus:outline-none">
+                    <option value="">— Sem categoria —</option>
+                    {categorias.map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs text-zinc-400 mb-1.5">Subcategoria</label>
+                  <select value={editForm.subcategoria_id} onChange={e => setEditForm({ ...editForm, subcategoria_id: e.target.value })}
+                    disabled={!editForm.categoria_id}
+                    className="w-full px-3 py-2 rounded-lg bg-zinc-800 border border-zinc-700 text-zinc-300 text-sm focus:outline-none disabled:opacity-40">
+                    <option value="">— Sem subcategoria —</option>
+                    {filteredSubs.map(s => <option key={s.id} value={s.id}>{s.nome}</option>)}
+                  </select>
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs text-zinc-400 mb-1.5">Tags (separadas por vírgula)</label>
+                <input value={editForm.tags} onChange={e => setEditForm({ ...editForm, tags: e.target.value })}
+                  className="w-full px-3 py-2 rounded-lg bg-zinc-800 border border-zinc-700 text-white text-sm focus:outline-none" />
+              </div>
+            </div>
+            <div className="px-6 py-4 border-t border-zinc-800 flex justify-end gap-3">
+              <button onClick={() => setEditing(null)} className="px-4 py-2 text-sm text-zinc-400 hover:text-white transition-colors">Cancelar</button>
+              <button onClick={saveEdit} disabled={saving}
+                className="px-4 py-2 rounded-lg bg-white text-zinc-950 font-semibold text-sm hover:bg-zinc-100 transition-colors disabled:opacity-50">
+                {saving ? 'Salvando...' : 'Salvar alterações'}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   )
@@ -150,21 +510,17 @@ function UsuariosTab({ profiles, currentUserId, onReload }: { profiles: Profile[
               <td className="px-4 py-3 text-zinc-500 text-xs hidden md:table-cell">{new Date(p.created_at).toLocaleDateString('pt-BR')}</td>
               <td className="px-4 py-3 text-right">
                 {p.id !== currentUserId && (
-                  <button onClick={() => { setEditing(p); setEditRole(p.role) }}
-                    className="text-xs text-zinc-400 hover:text-white transition-colors">
-                    Editar
-                  </button>
+                  <button onClick={() => { setEditing(p); setEditRole(p.role) }} className="text-xs text-zinc-400 hover:text-white transition-colors">Editar</button>
                 )}
               </td>
             </tr>
           ))}
         </tbody>
       </table>
-
       {editing && (
         <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
           <div className="bg-zinc-900 rounded-xl border border-zinc-700 w-full max-w-sm p-6 space-y-4">
-            <h3 className="text-white font-semibold">Editar perfil: {editing.full_name}</h3>
+            <h3 className="text-white font-semibold">Editar: {editing.full_name}</h3>
             <div>
               <label className="block text-xs text-zinc-400 mb-1.5">Nível de acesso</label>
               <select value={editRole} onChange={e => setEditRole(e.target.value)}
@@ -187,9 +543,7 @@ function UsuariosTab({ profiles, currentUserId, onReload }: { profiles: Profile[
 // ── Auditoria ──────────────────────────────────────────────────────────────────
 
 function AuditoriaTab({ logs }: { logs: AuditLog[] }) {
-  if (logs.length === 0) {
-    return <div className="text-center py-16 text-zinc-500 text-sm">Nenhum log de auditoria encontrado.</div>
-  }
+  if (logs.length === 0) return <div className="text-center py-16 text-zinc-500 text-sm">Nenhum log encontrado.</div>
   return (
     <div className="space-y-3">
       {logs.map(log => (
@@ -197,21 +551,17 @@ function AuditoriaTab({ logs }: { logs: AuditLog[] }) {
           <div className="flex-1 min-w-0">
             <p className="text-sm text-white">
               <span className="font-medium">{log.profiles?.full_name ?? 'Sistema'}</span>
-              <span className="text-zinc-400"> realizou ação de </span>
+              <span className="text-zinc-400"> realizou </span>
               <span className="uppercase text-xs font-bold text-amber-400">{log.acao}</span>
             </p>
-            <p className="text-xs text-zinc-500 mt-1">
-              Entidade: {log.entidade} {log.entidade_id ? `(ID: ${log.entidade_id})` : ''}
-            </p>
+            <p className="text-xs text-zinc-500 mt-1">Entidade: {log.entidade} {log.entidade_id ? `(ID: ${log.entidade_id})` : ''}</p>
             {log.detalhes && (
               <pre className="mt-2 p-2 rounded-lg bg-zinc-900 border border-zinc-800 text-xs text-zinc-400 overflow-auto max-h-24">
                 {JSON.stringify(log.detalhes, null, 2)}
               </pre>
             )}
           </div>
-          <span className="text-xs text-zinc-600 whitespace-nowrap flex-shrink-0">
-            {new Date(log.criado_em).toLocaleString('pt-BR')}
-          </span>
+          <span className="text-xs text-zinc-600 whitespace-nowrap flex-shrink-0">{new Date(log.criado_em).toLocaleString('pt-BR')}</span>
         </div>
       ))}
     </div>
@@ -220,12 +570,7 @@ function AuditoriaTab({ logs }: { logs: AuditLog[] }) {
 
 // ── Estrutura ──────────────────────────────────────────────────────────────────
 
-function EstruturaTab({ categorias, subcategorias, subniveis, onReload }: {
-  categorias: Categoria[]
-  subcategorias: Subcategoria[]
-  subniveis: Subnivel[]
-  onReload: () => void
-}) {
+function EstruturaTab({ categorias, subcategorias, subniveis, onReload }: { categorias: Categoria[]; subcategorias: Subcategoria[]; subniveis: Subnivel[]; onReload: () => void }) {
   const supabase = createClient()
   const [expandedCat, setExpandedCat] = useState<string | null>(null)
   const [expandedSub, setExpandedSub] = useState<string | null>(null)
@@ -239,62 +584,44 @@ function EstruturaTab({ categorias, subcategorias, subniveis, onReload }: {
     if (!newCatName.trim()) return
     const maxOrdem = categorias.length ? Math.max(...categorias.map(c => c.ordem)) + 1 : 1
     await (supabase as any).from('categorias_principais').insert({ nome: newCatName.trim(), ordem: maxOrdem, ativo: true })
-    setNewCatName('')
-    onReload()
+    setNewCatName(''); onReload()
   }
-
   const addSubcategoria = async (catId: string) => {
     if (!newSubName.trim() || newSubForCat !== catId) return
     const subs = subcategorias.filter(s => s.categoria_id === catId)
     const maxOrdem = subs.length ? Math.max(...subs.map(s => s.ordem)) + 1 : 1
     await (supabase as any).from('subcategorias').insert({ nome: newSubName.trim(), categoria_id: catId, ordem: maxOrdem, ativo: true })
-    setNewSubName('')
-    setNewSubForCat('')
-    onReload()
+    setNewSubName(''); setNewSubForCat(''); onReload()
   }
-
   const addSubnivel = async (subId: string) => {
     if (!newNivelName.trim() || newNivelForSub !== subId) return
     const niveis = subniveis.filter(s => s.subcategoria_id === subId)
     const maxOrdem = niveis.length ? Math.max(...niveis.map(s => s.ordem)) + 1 : 1
     await (supabase as any).from('subniveis').insert({ nome: newNivelName.trim(), subcategoria_id: subId, ordem: maxOrdem, ativo: true })
-    setNewNivelName('')
-    setNewNivelForSub('')
-    onReload()
+    setNewNivelName(''); setNewNivelForSub(''); onReload()
   }
-
   const toggleAtivo = async (table: string, id: string, current: boolean) => {
-    await (supabase as any).from(table).update({ ativo: !current }).eq('id', id)
-    onReload()
+    await (supabase as any).from(table).update({ ativo: !current }).eq('id', id); onReload()
   }
-
   const deleteItem = async (table: string, id: string, label: string) => {
-    if (!confirm(`Remover "${label}"? Isso pode afetar prompts vinculados.`)) return
-    await (supabase as any).from(table).delete().eq('id', id)
-    onReload()
+    if (!confirm(`Remover "${label}"?`)) return
+    await (supabase as any).from(table).delete().eq('id', id); onReload()
   }
 
   return (
     <div className="space-y-4">
-      {/* Add categoria */}
       <div className="flex gap-2">
-        <input value={newCatName} onChange={e => setNewCatName(e.target.value)}
-          placeholder="Nova categoria principal..."
-          className="flex-1 px-3 py-2 rounded-lg bg-zinc-900 border border-zinc-800 text-white placeholder-zinc-600 text-sm focus:outline-none focus:border-zinc-600"
+        <input value={newCatName} onChange={e => setNewCatName(e.target.value)} placeholder="Nova categoria principal..."
+          className="flex-1 px-3 py-2 rounded-lg bg-zinc-900 border border-zinc-800 text-white placeholder-zinc-600 text-sm focus:outline-none"
           onKeyDown={e => e.key === 'Enter' && addCategoria()} />
-        <button onClick={addCategoria} className="px-4 py-2 rounded-lg bg-white text-zinc-950 font-semibold text-sm hover:bg-zinc-100 transition-colors">
-          + Categoria
-        </button>
+        <button onClick={addCategoria} className="px-4 py-2 rounded-lg bg-white text-zinc-950 font-semibold text-sm hover:bg-zinc-100 transition-colors">+ Categoria</button>
       </div>
-
       {categorias.map(cat => {
         const catSubs = subcategorias.filter(s => s.categoria_id === cat.id)
         return (
           <div key={cat.id} className="rounded-xl border border-zinc-800 overflow-hidden">
-            <div
-              className="flex items-center justify-between px-4 py-3 bg-zinc-900/50 cursor-pointer hover:bg-zinc-900"
-              onClick={() => setExpandedCat(expandedCat === cat.id ? null : cat.id)}
-            >
+            <div className="flex items-center justify-between px-4 py-3 bg-zinc-900/50 cursor-pointer hover:bg-zinc-900"
+              onClick={() => setExpandedCat(expandedCat === cat.id ? null : cat.id)}>
               <div className="flex items-center gap-3">
                 <span className="text-white font-medium text-sm">{cat.nome}</span>
                 <span className="text-xs text-zinc-600">{catSubs.length} subcategorias</span>
@@ -305,14 +632,10 @@ function EstruturaTab({ categorias, subcategorias, subniveis, onReload }: {
                   className={`text-xs transition-colors ${cat.ativo ? 'text-zinc-500 hover:text-amber-400' : 'text-zinc-600 hover:text-green-400'}`}>
                   {cat.ativo ? 'Desativar' : 'Ativar'}
                 </button>
-                <button onClick={() => deleteItem('categorias_principais', cat.id, cat.nome)}
-                  className="text-xs text-red-400/60 hover:text-red-400 transition-colors">
-                  Remover
-                </button>
+                <button onClick={() => deleteItem('categorias_principais', cat.id, cat.nome)} className="text-xs text-red-400/60 hover:text-red-400 transition-colors">Remover</button>
                 <span className="text-zinc-600">{expandedCat === cat.id ? '▲' : '▼'}</span>
               </div>
             </div>
-
             {expandedCat === cat.id && (
               <div className="border-t border-zinc-800 divide-y divide-zinc-800/50">
                 {catSubs.map(sub => {
@@ -326,55 +649,38 @@ function EstruturaTab({ categorias, subcategorias, subniveis, onReload }: {
                           <span className="text-xs text-zinc-600">{subNiveis.length} subníveis</span>
                         </div>
                         <div className="flex items-center gap-3" onClick={e => e.stopPropagation()}>
-                          <button onClick={() => deleteItem('subcategorias', sub.id, sub.nome)}
-                            className="text-xs text-red-400/60 hover:text-red-400 transition-colors">
-                            Remover
-                          </button>
+                          <button onClick={() => deleteItem('subcategorias', sub.id, sub.nome)} className="text-xs text-red-400/60 hover:text-red-400 transition-colors">Remover</button>
                           <span className="text-zinc-600 text-xs">{expandedSub === sub.id ? '▲' : '▼'}</span>
                         </div>
                       </div>
-
                       {expandedSub === sub.id && (
                         <div className="px-10 py-2 bg-zinc-950/30 space-y-1">
                           {subNiveis.map(n => (
                             <div key={n.id} className="flex items-center justify-between py-1">
                               <span className="text-zinc-400 text-xs">↳ {n.nome}</span>
-                              <button onClick={() => deleteItem('subniveis', n.id, n.nome)}
-                                className="text-xs text-red-400/60 hover:text-red-400 transition-colors">
-                                Remover
-                              </button>
+                              <button onClick={() => deleteItem('subniveis', n.id, n.nome)} className="text-xs text-red-400/60 hover:text-red-400 transition-colors">Remover</button>
                             </div>
                           ))}
                           <div className="flex gap-2 pt-2">
-                            <input
-                              value={newNivelForSub === sub.id ? newNivelName : ''}
+                            <input value={newNivelForSub === sub.id ? newNivelName : ''}
                               onChange={e => { setNewNivelForSub(sub.id); setNewNivelName(e.target.value) }}
                               placeholder="Novo subnível..."
                               className="flex-1 px-2 py-1 rounded bg-zinc-900 border border-zinc-800 text-white placeholder-zinc-600 text-xs focus:outline-none"
-                              onKeyDown={e => e.key === 'Enter' && addSubnivel(sub.id)}
-                            />
-                            <button onClick={() => addSubnivel(sub.id)} className="px-3 py-1 rounded bg-zinc-800 text-zinc-300 text-xs hover:bg-zinc-700 transition-colors">
-                              + Subnível
-                            </button>
+                              onKeyDown={e => e.key === 'Enter' && addSubnivel(sub.id)} />
+                            <button onClick={() => addSubnivel(sub.id)} className="px-3 py-1 rounded bg-zinc-800 text-zinc-300 text-xs hover:bg-zinc-700 transition-colors">+ Subnível</button>
                           </div>
                         </div>
                       )}
                     </div>
                   )
                 })}
-
-                {/* Add subcategoria */}
                 <div className="px-6 py-3 flex gap-2">
-                  <input
-                    value={newSubForCat === cat.id ? newSubName : ''}
+                  <input value={newSubForCat === cat.id ? newSubName : ''}
                     onChange={e => { setNewSubForCat(cat.id); setNewSubName(e.target.value) }}
                     placeholder="Nova subcategoria..."
                     className="flex-1 px-2 py-1.5 rounded-lg bg-zinc-900 border border-zinc-800 text-white placeholder-zinc-600 text-xs focus:outline-none"
-                    onKeyDown={e => e.key === 'Enter' && addSubcategoria(cat.id)}
-                  />
-                  <button onClick={() => addSubcategoria(cat.id)} className="px-3 py-1.5 rounded-lg bg-zinc-800 text-zinc-300 text-xs hover:bg-zinc-700 transition-colors">
-                    + Sub
-                  </button>
+                    onKeyDown={e => e.key === 'Enter' && addSubcategoria(cat.id)} />
+                  <button onClick={() => addSubcategoria(cat.id)} className="px-3 py-1.5 rounded-lg bg-zinc-800 text-zinc-300 text-xs hover:bg-zinc-700 transition-colors">+ Sub</button>
                 </div>
               </div>
             )}
@@ -385,7 +691,7 @@ function EstruturaTab({ categorias, subcategorias, subniveis, onReload }: {
   )
 }
 
-// ── Áreas do Direito ──────────────────────────────────────────────────────────
+// ── Áreas ─────────────────────────────────────────────────────────────────────
 
 function AreasTab({ areas, onReload }: { areas: Area[]; onReload: () => void }) {
   const supabase = createClient()
@@ -395,33 +701,24 @@ function AreasTab({ areas, onReload }: { areas: Area[]; onReload: () => void }) 
     if (!newName.trim()) return
     const maxOrdem = areas.length ? Math.max(...areas.map(a => a.ordem)) + 1 : 1
     await (supabase as any).from('areas_direito').insert({ nome: newName.trim(), ordem: maxOrdem, ativo: true })
-    setNewName('')
-    onReload()
+    setNewName(''); onReload()
   }
-
   const toggleAtivo = async (id: string, current: boolean) => {
-    await (supabase as any).from('areas_direito').update({ ativo: !current }).eq('id', id)
-    onReload()
+    await (supabase as any).from('areas_direito').update({ ativo: !current }).eq('id', id); onReload()
   }
-
   const deleteArea = async (id: string, nome: string) => {
-    if (!confirm(`Remover a área "${nome}"? Isso pode afetar prompts vinculados.`)) return
-    await (supabase as any).from('areas_direito').delete().eq('id', id)
-    onReload()
+    if (!confirm(`Remover "${nome}"?`)) return
+    await (supabase as any).from('areas_direito').delete().eq('id', id); onReload()
   }
 
   return (
     <div className="space-y-4">
       <div className="flex gap-2">
-        <input value={newName} onChange={e => setNewName(e.target.value)}
-          placeholder="Nova área do direito..."
-          className="flex-1 px-3 py-2 rounded-lg bg-zinc-900 border border-zinc-800 text-white placeholder-zinc-600 text-sm focus:outline-none focus:border-zinc-600"
+        <input value={newName} onChange={e => setNewName(e.target.value)} placeholder="Nova área do direito..."
+          className="flex-1 px-3 py-2 rounded-lg bg-zinc-900 border border-zinc-800 text-white placeholder-zinc-600 text-sm focus:outline-none"
           onKeyDown={e => e.key === 'Enter' && addArea()} />
-        <button onClick={addArea} className="px-4 py-2 rounded-lg bg-white text-zinc-950 font-semibold text-sm hover:bg-zinc-100 transition-colors">
-          + Área
-        </button>
+        <button onClick={addArea} className="px-4 py-2 rounded-lg bg-white text-zinc-950 font-semibold text-sm hover:bg-zinc-100 transition-colors">+ Área</button>
       </div>
-
       <div className="rounded-xl border border-zinc-800 overflow-hidden">
         <table className="w-full text-sm">
           <thead>
@@ -446,20 +743,25 @@ function AreasTab({ areas, onReload }: { areas: Area[]; onReload: () => void }) 
                       className={`text-xs transition-colors ${a.ativo ? 'text-zinc-500 hover:text-amber-400' : 'text-zinc-600 hover:text-green-400'}`}>
                       {a.ativo ? 'Desativar' : 'Ativar'}
                     </button>
-                    <button onClick={() => deleteArea(a.id, a.nome)}
-                      className="text-xs text-red-400/60 hover:text-red-400 transition-colors">
-                      Remover
-                    </button>
+                    <button onClick={() => deleteArea(a.id, a.nome)} className="text-xs text-red-400/60 hover:text-red-400 transition-colors">Remover</button>
                   </div>
                 </td>
               </tr>
             ))}
-            {areas.length === 0 && (
-              <tr><td colSpan={3} className="px-4 py-10 text-center text-zinc-500 text-sm">Nenhuma área cadastrada</td></tr>
-            )}
+            {areas.length === 0 && <tr><td colSpan={3} className="px-4 py-10 text-center text-zinc-500 text-sm">Nenhuma área cadastrada</td></tr>}
           </tbody>
         </table>
       </div>
     </div>
   )
+}
+
+function StatusBadge({ status }: { status: string }) {
+  const map: Record<string, string> = {
+    aprovado: 'bg-green-500/10 text-green-400 border-green-500/20',
+    ativo: 'bg-green-500/10 text-green-400 border-green-500/20',
+    pendente: 'bg-amber-500/10 text-amber-400 border-amber-500/20',
+    inativo: 'bg-zinc-500/10 text-zinc-400 border-zinc-500/20',
+  }
+  return <span className={`px-2 py-0.5 rounded-full text-xs border ${map[status] ?? map.inativo}`}>{status}</span>
 }

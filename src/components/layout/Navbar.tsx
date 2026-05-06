@@ -49,7 +49,6 @@ export function Navbar() {
 
   const authLinks = user ? [
     { href: '/alimentacao', label: 'Alimentação' },
-    { href: '/consulta', label: 'Consulta' },
   ] : []
 
   return (

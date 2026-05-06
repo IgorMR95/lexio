@@ -33,7 +33,7 @@ export function LoginForm() {
     <div className="min-h-[80vh] flex items-center justify-center px-4">
       <div className="w-full max-w-sm">
         <div className="text-center mb-8">
-          <Link href="/" className="text-2xl font-bold text-white">lexio</Link>
+          <Link href="/" className="text-2xl font-bold text-white">midori</Link>
           <p className="mt-2 text-sm text-zinc-500">Entre na sua conta</p>
         </div>
 

@@ -7,7 +7,7 @@ import { Footer } from '@/components/layout/Footer'
 const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
-  title: 'Lexio — Base de Prompts Jurídicos',
+  title: 'Midori — Base de Prompts Jurídicos',
   description: 'A maior base de prompts de IA para profissionais e acadêmicos do direito.',
 }
 

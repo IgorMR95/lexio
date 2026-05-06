@@ -41,15 +41,21 @@ export function Navbar() {
     router.refresh()
   }
 
-  const navLinks = [
+  const isAdmin = profile?.role === 'admin'
+
+  const publicLinks = [
     { href: '/prompts', label: 'Base de Prompts' },
     { href: '/academy', label: 'Academy' },
     { href: '/faq', label: 'FAQ' },
   ]
 
-  const authLinks = user ? [
+  const privateLinks = user ? [
+    { href: '/dashboard', label: 'Dashboard' },
     { href: '/alimentacao', label: 'Alimentação' },
+    ...(isAdmin ? [{ href: '/gestao', label: 'Gestão' }] : []),
   ] : []
+
+  const allLinks = [...publicLinks, ...privateLinks]
 
   return (
     <header className="border-b border-zinc-800 bg-zinc-950/80 backdrop-blur-sm sticky top-0 z-50">
@@ -61,20 +67,7 @@ export function Navbar() {
           </Link>
 
           <nav className="hidden md:flex items-center gap-6">
-            {navLinks.map(link => (
-              <Link
-                key={link.href}
-                href={link.href}
-                className={`text-sm transition-colors ${
-                  pathname.startsWith(link.href)
-                    ? 'text-white font-medium'
-                    : 'text-zinc-400 hover:text-white'
-                }`}
-              >
-                {link.label}
-              </Link>
-            ))}
-            {authLinks.map(link => (
+            {allLinks.map(link => (
               <Link
                 key={link.href}
                 href={link.href}
@@ -92,20 +85,15 @@ export function Navbar() {
           <div className="flex items-center gap-3">
             {user ? (
               <div className="flex items-center gap-3">
-                {profile?.role === 'admin' && (
-                  <Link
-                    href="/admin"
-                    className="text-xs px-3 py-1.5 rounded-md bg-amber-500/10 text-amber-400 border border-amber-500/20 hover:bg-amber-500/20 transition-colors"
-                  >
+                {isAdmin ? (
+                  <span className="text-xs px-2.5 py-1 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20 font-medium">
                     Admin
-                  </Link>
+                  </span>
+                ) : (
+                  <span className="text-xs px-2.5 py-1 rounded-full bg-zinc-800 text-zinc-400 border border-zinc-700 font-medium">
+                    Usuário
+                  </span>
                 )}
-                <Link
-                  href="/dashboard"
-                  className="text-sm text-zinc-400 hover:text-white transition-colors"
-                >
-                  Dashboard
-                </Link>
                 <button
                   onClick={handleLogout}
                   className="text-sm px-3 py-1.5 rounded-md border border-zinc-700 text-zinc-400 hover:text-white hover:border-zinc-500 transition-colors"
@@ -146,7 +134,7 @@ export function Navbar() {
 
         {menuOpen && (
           <div className="md:hidden border-t border-zinc-800 py-3 flex flex-col gap-2">
-            {navLinks.map(link => (
+            {allLinks.map(link => (
               <Link
                 key={link.href}
                 href={link.href}
@@ -156,20 +144,18 @@ export function Navbar() {
                 {link.label}
               </Link>
             ))}
-            {authLinks.map(link => (
-              <Link
-                key={link.href}
-                href={link.href}
-                onClick={() => setMenuOpen(false)}
-                className="text-sm py-2 text-zinc-400 hover:text-white transition-colors"
-              >
-                {link.label}
-              </Link>
-            ))}
-            {profile?.role === 'admin' && (
-              <Link href="/admin/dados" onClick={() => setMenuOpen(false)} className="text-sm py-2 text-amber-400 hover:text-amber-300 transition-colors">
-                Gestão de Dados
-              </Link>
+            {user && (
+              <div className="pt-2 border-t border-zinc-800 mt-1">
+                {isAdmin ? (
+                  <span className="text-xs px-2.5 py-1 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20 font-medium">
+                    Admin
+                  </span>
+                ) : (
+                  <span className="text-xs px-2.5 py-1 rounded-full bg-zinc-800 text-zinc-400 border border-zinc-700 font-medium">
+                    Usuário
+                  </span>
+                )}
+              </div>
             )}
           </div>
         )}

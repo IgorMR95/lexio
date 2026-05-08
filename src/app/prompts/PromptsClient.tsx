@@ -4,11 +4,19 @@ import { useState, useMemo } from 'react'
 import Link from 'next/link'
 import type { CategoriaPrincipal, Subcategoria, Subnivel, AreaDireito, PromptWithRelations } from '@/lib/supabase/types'
 import { MelhoresContent } from './MelhoresContent'
+import { UsuariosDestaqueContent } from './UsuariosDestaqueContent'
 
 interface MelhoresData {
   topSemana: any[]
   topAllTime: any[]
   destaques: any[]
+}
+
+interface UsuariosDestaqueData {
+  topAprovados: any[]
+  topDestaques: any[]
+  topVotados: any[]
+  topPublicadores: any[]
 }
 
 interface Props {
@@ -18,10 +26,11 @@ interface Props {
   subniveis: Subnivel[]
   areas: AreaDireito[]
   melhores: MelhoresData
+  usuariosDestaque: UsuariosDestaqueData
 }
 
-export function PromptsClient({ initialPrompts, categorias, subcategorias, subniveis, areas, melhores }: Props) {
-  const [activeTab, setActiveTab] = useState<'todos' | 'melhores'>('todos')
+export function PromptsClient({ initialPrompts, categorias, subcategorias, subniveis, areas, melhores, usuariosDestaque }: Props) {
+  const [activeTab, setActiveTab] = useState<'todos' | 'melhores' | 'usuarios'>('todos')
   const [search, setSearch] = useState('')
   const [selectedCategoria, setSelectedCategoria] = useState('')
   const [selectedSubcategoria, setSelectedSubcategoria] = useState('')
@@ -100,7 +109,16 @@ export function PromptsClient({ initialPrompts, categorias, subcategorias, subni
             <svg className={`w-3.5 h-3.5 ${activeTab === 'melhores' ? 'text-yellow-500' : 'text-yellow-400'}`} fill="currentColor" viewBox="0 0 24 24">
               <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
             </svg>
-            Melhores
+            Melhores Prompts
+          </button>
+          <button
+            onClick={() => setActiveTab('usuarios')}
+            className={`flex items-center gap-1.5 px-4 py-2 rounded-md text-sm font-medium transition-colors ${activeTab === 'usuarios' ? 'bg-white text-zinc-950' : 'text-zinc-400 hover:text-white'}`}
+          >
+            <svg className={`w-3.5 h-3.5 ${activeTab === 'usuarios' ? 'text-green-600' : 'text-green-400'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
+            </svg>
+            Usuários Destaque
           </button>
         </div>
       </div>
@@ -110,6 +128,15 @@ export function PromptsClient({ initialPrompts, categorias, subcategorias, subni
           topSemana={melhores.topSemana}
           topAllTime={melhores.topAllTime}
           destaques={melhores.destaques}
+        />
+      )}
+
+      {activeTab === 'usuarios' && (
+        <UsuariosDestaqueContent
+          topAprovados={usuariosDestaque.topAprovados}
+          topDestaques={usuariosDestaque.topDestaques}
+          topVotados={usuariosDestaque.topVotados}
+          topPublicadores={usuariosDestaque.topPublicadores}
         />
       )}
 

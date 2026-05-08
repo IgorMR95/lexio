@@ -76,6 +76,123 @@ export default async function PromptsPage() {
     }
   }
 
+  // ── Rankings de usuários ──
+
+  // Top 5: mais prompts aprovados (all-time)
+  const { data: topAprovadosRaw } = await (supabase as any)
+    .from('prompts')
+    .select('autor_id')
+    .in('status', ['ativo', 'aprovado'])
+
+  const topAprovadosMap: Record<string, number> = {}
+  ;(topAprovadosRaw ?? []).forEach((p: any) => {
+    if (p.autor_id) topAprovadosMap[p.autor_id] = (topAprovadosMap[p.autor_id] ?? 0) + 1
+  })
+  const topAprovadosIds = Object.entries(topAprovadosMap)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 5)
+    .map(([id]) => id)
+
+  // Top 5: mais prompts destaque
+  const { data: topDestaquesRaw } = await (supabase as any)
+    .from('prompts')
+    .select('autor_id')
+    .eq('destaque', true)
+    .in('status', ['ativo', 'aprovado'])
+
+  const topDestaquesMap: Record<string, number> = {}
+  ;(topDestaquesRaw ?? []).forEach((p: any) => {
+    if (p.autor_id) topDestaquesMap[p.autor_id] = (topDestaquesMap[p.autor_id] ?? 0) + 1
+  })
+  const topDestaquesIds = Object.entries(topDestaquesMap)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 5)
+    .map(([id]) => id)
+
+  // Top 5: mais curtidas recebidas (all-time)
+  const { data: votosRaw } = await (supabase as any)
+    .from('prompt_votos')
+    .select('prompt_id')
+
+  // Para curtidas precisamos cruzar votos → prompts → autor
+  const votoPorPrompt: Record<string, number> = {}
+  ;(votosRaw ?? []).forEach((v: any) => {
+    votoPorPrompt[v.prompt_id] = (votoPorPrompt[v.prompt_id] ?? 0) + 1
+  })
+
+  const votosAutorMap: Record<string, number> = {}
+  ;(topAprovadosRaw ?? []).forEach((p: any) => {
+    // topAprovadosRaw has autor_id + we need prompt id — fetch separately
+  })
+
+  // Busca prompts com autor_id e seus totais de votos
+  const { data: promptsVotosRaw } = await (supabase as any)
+    .from('prompts')
+    .select('id, autor_id')
+    .in('status', ['ativo', 'aprovado'])
+
+  const votosAutor: Record<string, number> = {}
+  ;(promptsVotosRaw ?? []).forEach((p: any) => {
+    if (p.autor_id && votoPorPrompt[p.id]) {
+      votosAutor[p.autor_id] = (votosAutor[p.autor_id] ?? 0) + votoPorPrompt[p.id]
+    }
+  })
+  const topVotadosIds = Object.entries(votosAutor)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 5)
+    .map(([id]) => id)
+
+  // Top 5: mais ativos na semana (publicações nos últimos 7 dias)
+  const umaSemanaAtras = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()
+  const { data: semanaRaw } = await (supabase as any)
+    .from('prompts')
+    .select('autor_id')
+    .in('status', ['ativo', 'aprovado'])
+    .gte('created_at', umaSemanaAtras)
+
+  const semanaMap: Record<string, number> = {}
+  ;(semanaRaw ?? []).forEach((p: any) => {
+    if (p.autor_id) semanaMap[p.autor_id] = (semanaMap[p.autor_id] ?? 0) + 1
+  })
+  const topPublicadoresIds = Object.entries(semanaMap)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 5)
+    .map(([id]) => id)
+
+  // Buscar perfis de todos os IDs únicos necessários
+  const allUserIds = Array.from(new Set([
+    ...topAprovadosIds,
+    ...topDestaquesIds,
+    ...topVotadosIds,
+    ...topPublicadoresIds,
+  ]))
+
+  const userProfileMap: Record<string, any> = {}
+  if (allUserIds.length > 0) {
+    const { data: userProfiles } = await (supabase as any)
+      .from('profiles')
+      .select('id, full_name, email, avatar_url, instituicao')
+      .in('id', allUserIds)
+    ;(userProfiles ?? []).forEach((p: any) => { userProfileMap[p.id] = p })
+  }
+
+  const buildRanking = (ids: string[], countMap: Record<string, number>) =>
+    ids.map(id => ({
+      id,
+      full_name: userProfileMap[id]?.full_name ?? null,
+      email: userProfileMap[id]?.email ?? null,
+      avatar_url: userProfileMap[id]?.avatar_url ?? null,
+      instituicao: userProfileMap[id]?.instituicao ?? null,
+      total: countMap[id] ?? 0,
+    }))
+
+  const usuariosDestaque = {
+    topAprovados: buildRanking(topAprovadosIds, topAprovadosMap),
+    topDestaques: buildRanking(topDestaquesIds, topDestaquesMap),
+    topVotados: buildRanking(topVotadosIds, votosAutor),
+    topPublicadores: buildRanking(topPublicadoresIds, semanaMap),
+  }
+
   return (
     <PromptsClient
       initialPrompts={promptsWithAuthor}
@@ -88,6 +205,7 @@ export default async function PromptsPage() {
         topAllTime,
         destaques: destaques ?? [],
       }}
+      usuariosDestaque={usuariosDestaque}
     />
   )
 }

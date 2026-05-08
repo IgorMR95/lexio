@@ -1,7 +1,7 @@
 const faqs = [
   {
     q: 'O que é o Midori?',
-    a: 'Midori é uma base de prompts de inteligência artificial especialmente desenvolvida para profissionais e acadêmicos do direito. Reúne prompts organizados por categoria profissional, área do direito e nível de atuação.',
+    a: 'Midori é uma rede social de compartilhamento de prompts entre juristas. Reúne prompts de inteligência artificial organizados por categoria profissional, área do direito e nível de atuação, desenvolvida especialmente para advogados, magistrados, defensores, promotores e acadêmicos do direito.',
   },
   {
     q: 'Preciso criar uma conta para usar?',

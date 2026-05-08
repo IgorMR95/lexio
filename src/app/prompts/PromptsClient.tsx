@@ -254,7 +254,7 @@ function PromptCard({ prompt }: { prompt: PromptWithRelations }) {
     <Link href={`/prompts/${prompt.id}`} className="group block">
       <div className="h-full p-5 rounded-xl border border-zinc-800 bg-zinc-900/50 hover:border-zinc-700 hover:bg-zinc-900 transition-all">
         <div className="flex items-start justify-between gap-3 mb-3">
-          <h3 className="font-semibold text-white text-sm leading-snug group-hover:text-blue-300 transition-colors line-clamp-2">
+          <h3 className="font-semibold text-white text-sm leading-snug group-hover:text-green-300 transition-colors line-clamp-2">
             {prompt.titulo}
           </h3>
         </div>
@@ -267,7 +267,7 @@ function PromptCard({ prompt }: { prompt: PromptWithRelations }) {
 
         <div className="flex flex-wrap gap-1.5 mb-3">
           {(prompt as any).areas_direito?.nome && (
-            <span className="px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-400 text-xs border border-blue-500/20">
+            <span className="px-2 py-0.5 rounded-full bg-green-500/10 text-green-400 text-xs border border-green-500/20">
               {(prompt as any).areas_direito.nome}
             </span>
           )}
@@ -277,7 +277,7 @@ function PromptCard({ prompt }: { prompt: PromptWithRelations }) {
             </span>
           )}
           {(prompt as any).internacional && (
-            <span className="px-2 py-0.5 rounded-full bg-indigo-500/10 text-indigo-400 text-xs border border-indigo-500/20">
+            <span className="px-2 py-0.5 rounded-full bg-teal-500/10 text-teal-400 text-xs border border-teal-500/20">
               Intl{(prompt as any).idioma ? ` · ${(prompt as any).idioma.toUpperCase()}` : ''}
             </span>
           )}
@@ -295,7 +295,7 @@ function PromptCard({ prompt }: { prompt: PromptWithRelations }) {
           <span className="text-xs text-zinc-600">
             {new Date(prompt.created_at).toLocaleDateString('pt-BR')}
           </span>
-          <span className="text-xs text-zinc-500 group-hover:text-blue-400 transition-colors">
+          <span className="text-xs text-zinc-500 group-hover:text-green-400 transition-colors">
             Ver prompt →
           </span>
         </div>

@@ -3,6 +3,13 @@
 import { useState, useMemo } from 'react'
 import Link from 'next/link'
 import type { CategoriaPrincipal, Subcategoria, Subnivel, AreaDireito, PromptWithRelations } from '@/lib/supabase/types'
+import { MelhoresContent } from './MelhoresContent'
+
+interface MelhoresData {
+  topSemana: any[]
+  topAllTime: any[]
+  destaques: any[]
+}
 
 interface Props {
   initialPrompts: PromptWithRelations[]
@@ -10,9 +17,11 @@ interface Props {
   subcategorias: Subcategoria[]
   subniveis: Subnivel[]
   areas: AreaDireito[]
+  melhores: MelhoresData
 }
 
-export function PromptsClient({ initialPrompts, categorias, subcategorias, subniveis, areas }: Props) {
+export function PromptsClient({ initialPrompts, categorias, subcategorias, subniveis, areas, melhores }: Props) {
+  const [activeTab, setActiveTab] = useState<'todos' | 'melhores'>('todos')
   const [search, setSearch] = useState('')
   const [selectedCategoria, setSelectedCategoria] = useState('')
   const [selectedSubcategoria, setSelectedSubcategoria] = useState('')
@@ -75,9 +84,37 @@ export function PromptsClient({ initialPrompts, categorias, subcategorias, subni
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
       <div className="mb-8">
-        <h1 className="text-2xl font-bold text-white mb-1">Base de Prompts</h1>
-        <p className="text-zinc-500 text-sm">{filtered.length} prompt{filtered.length !== 1 ? 's' : ''} encontrado{filtered.length !== 1 ? 's' : ''}</p>
+        <h1 className="text-2xl font-bold text-white mb-4">Base de Prompts</h1>
+        {/* Abas */}
+        <div className="flex gap-1 bg-zinc-900 p-1 rounded-lg w-fit">
+          <button
+            onClick={() => setActiveTab('todos')}
+            className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${activeTab === 'todos' ? 'bg-white text-zinc-950' : 'text-zinc-400 hover:text-white'}`}
+          >
+            Todos os Prompts
+          </button>
+          <button
+            onClick={() => setActiveTab('melhores')}
+            className={`flex items-center gap-1.5 px-4 py-2 rounded-md text-sm font-medium transition-colors ${activeTab === 'melhores' ? 'bg-white text-zinc-950' : 'text-zinc-400 hover:text-white'}`}
+          >
+            <svg className={`w-3.5 h-3.5 ${activeTab === 'melhores' ? 'text-yellow-500' : 'text-yellow-400'}`} fill="currentColor" viewBox="0 0 24 24">
+              <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
+            </svg>
+            Melhores
+          </button>
+        </div>
       </div>
+
+      {activeTab === 'melhores' && (
+        <MelhoresContent
+          topSemana={melhores.topSemana}
+          topAllTime={melhores.topAllTime}
+          destaques={melhores.destaques}
+        />
+      )}
+
+      {activeTab === 'todos' && (
+      <><p className="text-zinc-500 text-sm mb-6">{filtered.length} prompt{filtered.length !== 1 ? 's' : ''} encontrado{filtered.length !== 1 ? 's' : ''}</p>
 
       {/* Busca + ordenação */}
       <div className="flex flex-col sm:flex-row gap-3 mb-6">
@@ -245,6 +282,7 @@ export function PromptsClient({ initialPrompts, categorias, subcategorias, subni
           )}
         </div>
       </div>
+      </>)}
     </div>
   )
 }

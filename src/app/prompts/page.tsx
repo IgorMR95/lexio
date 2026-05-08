@@ -22,7 +22,7 @@ export default async function PromptsPage() {
     supabase.from('areas_direito').select('*').eq('ativo', true).order('ordem'),
     supabase
       .from('prompts')
-      .select(`*, categorias_principais(id, nome, slug), subcategorias(id, nome, slug), subniveis(id, nome, slug), areas_direito(id, nome, slug), profiles(full_name, email)`)
+      .select(`*, categorias_principais(id, nome, slug), subcategorias(id, nome, slug), subniveis(id, nome, slug), areas_direito(id, nome, slug)`)
       .in('status', ['ativo', 'aprovado'])
       .order('created_at', { ascending: false }),
     (supabase as any)
@@ -43,6 +43,22 @@ export default async function PromptsPage() {
       .limit(20),
   ])
 
+  // Buscar nomes dos autores separadamente
+  const autorIds = Array.from(new Set((prompts ?? []).map((p: any) => p.autor_id).filter(Boolean)))
+  const profileMap: Record<string, { full_name: string | null; email: string | null }> = {}
+  if (autorIds.length > 0) {
+    const { data: profiles } = await (supabase as any)
+      .from('profiles')
+      .select('id, full_name, email')
+      .in('id', autorIds)
+    profiles?.forEach((p: any) => { profileMap[p.id] = p })
+  }
+
+  const promptsWithAuthor = (prompts ?? []).map((p: any) => ({
+    ...p,
+    profiles: profileMap[p.autor_id] ?? null,
+  }))
+
   // Montar top all-time com dados completos dos prompts
   let topAllTime: any[] = []
   if (topAllTimeRaw && topAllTimeRaw.length > 0) {
@@ -62,7 +78,7 @@ export default async function PromptsPage() {
 
   return (
     <PromptsClient
-      initialPrompts={prompts ?? []}
+      initialPrompts={promptsWithAuthor}
       categorias={categorias ?? []}
       subcategorias={subcategorias ?? []}
       subniveis={subniveis ?? []}

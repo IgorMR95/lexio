@@ -6,12 +6,7 @@ export function Footer() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
         <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
           <div className="col-span-2 md:col-span-1">
-            <div className="flex items-center gap-2 mb-3">
-              <div className="w-6 h-6 rounded-md bg-green-500/15 border border-green-500/30 flex items-center justify-center">
-                <svg className="w-3.5 h-3.5 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 3l14 9-14 9V3z" />
-                </svg>
-              </div>
+            <div className="mb-3">
               <span className="text-base font-bold text-white">midori</span>
             </div>
             <p className="text-sm text-zinc-500">

@@ -70,14 +70,9 @@ export function Navbar() {
     <header className="border-b border-zinc-800 bg-zinc-950/90 backdrop-blur-sm sticky top-0 z-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
-          <Link href="/" className="flex items-center gap-2.5">
-            <div className="w-7 h-7 rounded-lg bg-green-500/15 border border-green-500/30 flex items-center justify-center">
-              <svg className="w-4 h-4 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 3l14 9-14 9V3z" />
-              </svg>
-            </div>
+          <Link href="/" className="flex items-center gap-2">
             <span className="text-base font-bold tracking-tight text-white">midori</span>
-            <span className="text-xs text-zinc-600 hidden sm:block">prompts jurídicos</span>
+            <span className="text-xs text-zinc-500 hidden sm:block">prompts jurídicos</span>
           </Link>
 
           <nav className="hidden md:flex items-center gap-6">

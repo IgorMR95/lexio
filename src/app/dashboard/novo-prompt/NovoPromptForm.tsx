@@ -11,9 +11,10 @@ interface Props {
   subniveis: Subnivel[]
   areas: AreaDireito[]
   userId: string
+  isAdmin?: boolean
 }
 
-export function NovoPromptForm({ categorias, subcategorias, subniveis, areas, userId }: Props) {
+export function NovoPromptForm({ categorias, subcategorias, subniveis, areas, userId, isAdmin }: Props) {
   const router = useRouter()
   const supabase = createClient()
   const [loading, setLoading] = useState(false)
@@ -67,7 +68,7 @@ export function NovoPromptForm({ categorias, subcategorias, subniveis, areas, us
       area_direito_id: areaDireitoId || null,
       tags,
       autor_id: userId,
-      status: 'pendente',
+      status: isAdmin ? 'ativo' : 'pendente',
       internacional,
       idioma: internacional ? (idioma || null) : null,
     })
@@ -224,7 +225,7 @@ export function NovoPromptForm({ categorias, subcategorias, subniveis, areas, us
         >
           {loading ? 'Salvando...' : 'Enviar prompt'}
         </button>
-        <p className="text-xs text-zinc-600">Será revisado antes de ser publicado</p>
+        {!isAdmin && <p className="text-xs text-zinc-600">Será revisado antes de ser publicado</p>}
       </div>
     </form>
   )

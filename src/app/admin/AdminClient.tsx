@@ -127,18 +127,32 @@ function RevisaoTab({ onCountChange }: { onCountChange: (n: number) => void }) {
     setLoading(true)
     const { data } = await (supabase as any)
       .from('prompts')
-      .select('*, areas_direito(nome), categorias_principais(nome), profiles!autor_id(full_name, email)')
+      .select('*, areas_direito(nome), categorias_principais(nome)')
       .eq('status', 'pendente')
       .order('created_at', { ascending: true })
-    setPrompts(data ?? [])
-    onCountChange(data?.length ?? 0)
+    if (!data) { setLoading(false); return }
+
+    // Busca profiles dos autores separadamente (autor_id pode ser null)
+    const autorIds = Array.from(new Set<string>(data.map((p: any) => p.autor_id).filter(Boolean)))
+    const profileMap: Record<string, any> = {}
+    if (autorIds.length > 0) {
+      const { data: profiles } = await (supabase as any)
+        .from('profiles')
+        .select('id, full_name, email')
+        .in('id', autorIds)
+      profiles?.forEach((p: any) => { profileMap[p.id] = p })
+    }
+
+    setPrompts(data.map((p: any) => ({ ...p, autorProfile: profileMap[p.autor_id] ?? null })))
+    onCountChange(data.length)
     setLoading(false)
   }, [onCountChange])
 
   useEffect(() => { load() }, [load])
 
   const aprovar = async (id: string) => {
-    await (supabase as any).from('prompts').update({ status: 'aprovado' }).eq('id', id)
+    const { error } = await (supabase as any).from('prompts').update({ status: 'aprovado' }).eq('id', id)
+    if (error) { alert('Erro ao aprovar: ' + error.message); return }
     load()
   }
   const rejeitar = async (id: string) => {
@@ -147,7 +161,8 @@ function RevisaoTab({ onCountChange }: { onCountChange: (n: number) => void }) {
     load()
   }
   const marcarAtivo = async (id: string) => {
-    await (supabase as any).from('prompts').update({ status: 'ativo' }).eq('id', id)
+    const { error } = await (supabase as any).from('prompts').update({ status: 'ativo' }).eq('id', id)
+    if (error) { alert('Erro ao ativar: ' + error.message); return }
     load()
   }
 
@@ -172,7 +187,7 @@ function RevisaoTab({ onCountChange }: { onCountChange: (n: number) => void }) {
               <p className="text-white font-medium text-sm">{p.titulo}</p>
               <div className="flex items-center gap-3 mt-1 flex-wrap">
                 <span className="text-xs text-zinc-500">
-                  por <span className="text-zinc-400">{p.profiles?.full_name ?? p.profiles?.email ?? '—'}</span>
+                  por <span className="text-zinc-400">{p.autorProfile?.full_name ?? p.autorProfile?.email ?? '—'}</span>
                 </span>
                 {p.areas_direito?.nome && <span className="text-xs text-zinc-600">{p.areas_direito.nome}</span>}
                 {p.categorias_principais?.nome && <span className="text-xs text-zinc-600">{p.categorias_principais.nome}</span>}
@@ -268,7 +283,7 @@ function PromptsTab({ areas, categorias, subcategorias }: { areas: Area[]; categ
     setSelected(new Set())
     let q = (supabase as any)
       .from('prompts')
-      .select('*, areas_direito(nome), categorias_principais(nome), profiles!autor_id(full_name)', { count: 'exact' })
+      .select('*, areas_direito(nome), categorias_principais(nome)', { count: 'exact' })
       .order('created_at', { ascending: false })
       .range(p * PAGE_SIZE, p * PAGE_SIZE + PAGE_SIZE - 1)
     if (s) q = q.or(`titulo.ilike.%${s}%,texto_completo.ilike.%${s}%`)
@@ -276,7 +291,16 @@ function PromptsTab({ areas, categorias, subcategorias }: { areas: Area[]; categ
     if (fi === 'sim') q = q.eq('internacional', true)
     if (fi === 'nao') q = q.eq('internacional', false)
     const { data: rows, count } = await q
-    setData(rows ?? [])
+
+    // Busca profiles dos autores separadamente
+    const autorIds = Array.from(new Set<string>((rows ?? []).map((r: any) => r.autor_id).filter(Boolean)))
+    const profileMap: Record<string, any> = {}
+    if (autorIds.length > 0) {
+      const { data: profiles } = await (supabase as any)
+        .from('profiles').select('id, full_name').in('id', autorIds)
+      profiles?.forEach((pr: any) => { profileMap[pr.id] = pr })
+    }
+    setData((rows ?? []).map((r: any) => ({ ...r, autorProfile: profileMap[r.autor_id] ?? null })))
     setTotal(count ?? 0)
     setLoading(false)
   }, [])
@@ -504,7 +528,7 @@ function PromptsTab({ areas, categorias, subcategorias }: { areas: Area[]; categ
                   <p className="text-zinc-600 text-xs mt-0.5">{new Date(row.created_at).toLocaleDateString('pt-BR')}</p>
                 </td>
                 <td className="px-4 py-3 hidden md:table-cell">
-                  <span className="text-xs text-zinc-400">{row.profiles?.full_name ?? '—'}</span>
+                  <span className="text-xs text-zinc-400">{row.autorProfile?.full_name ?? '—'}</span>
                 </td>
                 <td className="px-4 py-3"><StatusBadge status={row.status} /></td>
                 <td className="px-4 py-3 hidden lg:table-cell">

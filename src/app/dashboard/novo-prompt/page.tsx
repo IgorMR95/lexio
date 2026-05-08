@@ -9,18 +9,23 @@ export default async function NovoPromptPage() {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  const [{ data: categorias }, { data: subcategorias }, { data: subniveis }, { data: areas }] = await Promise.all([
+  const [{ data: categorias }, { data: subcategorias }, { data: subniveis }, { data: areas }, { data: profile }] = await Promise.all([
     supabase.from('categorias_principais').select('*').eq('ativo', true).order('ordem'),
     supabase.from('subcategorias').select('*').eq('ativo', true).order('ordem'),
     supabase.from('subniveis').select('*').eq('ativo', true).order('ordem'),
     supabase.from('areas_direito').select('*').eq('ativo', true).order('ordem'),
+    supabase.from('profiles').select('role').eq('id', user.id).single(),
   ])
+
+  const isAdmin = profile?.role === 'admin'
 
   return (
     <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
       <div className="mb-8">
         <h1 className="text-2xl font-bold text-white">Novo Prompt</h1>
-        <p className="text-zinc-500 text-sm mt-1">Compartilhe um prompt jurídico com a comunidade</p>
+        <p className="text-zinc-500 text-sm mt-1">
+          {isAdmin ? 'Prompt será publicado diretamente como ativo' : 'Compartilhe um prompt jurídico com a comunidade'}
+        </p>
       </div>
       <NovoPromptForm
         categorias={categorias ?? []}
@@ -28,6 +33,7 @@ export default async function NovoPromptPage() {
         subniveis={subniveis ?? []}
         areas={areas ?? []}
         userId={user.id}
+        isAdmin={isAdmin}
       />
     </div>
   )

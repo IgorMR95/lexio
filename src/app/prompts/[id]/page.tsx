@@ -16,8 +16,7 @@ export default async function PromptPage({ params }: { params: { id: string } })
       categorias_principais(id, nome, slug),
       subcategorias(id, nome, slug),
       subniveis(id, nome, slug),
-      areas_direito(id, nome, slug),
-      profiles!autor_id(full_name, email, bio, instituicao)
+      areas_direito(id, nome, slug)
     `)
     .eq('id', id)
     .in('status', ['ativo', 'aprovado'])
@@ -29,6 +28,12 @@ export default async function PromptPage({ params }: { params: { id: string } })
   const isAdmin = user
     ? (await supabase.from('profiles').select('role').eq('id', user.id).single()).data?.role === 'admin'
     : false
+
+  // Busca o autor separadamente apenas se autor_id existir
+  const autorId = (prompt as any).autor_id
+  const autorProfile = autorId
+    ? (await supabase.from('profiles').select('full_name, email, bio, instituicao').eq('id', autorId).single()).data
+    : null
 
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
@@ -142,22 +147,22 @@ export default async function PromptPage({ params }: { params: { id: string } })
             </dl>
           </div>
 
-          {(prompt as any).profiles && (
+          {autorProfile && (
             <div className="p-4 rounded-xl border border-zinc-800 bg-zinc-900/50">
               <h3 className="text-xs font-semibold text-zinc-400 uppercase tracking-wider mb-3">Autor</h3>
               <div className="flex items-start gap-3">
                 <div className="w-9 h-9 rounded-full bg-zinc-800 border border-zinc-700 flex items-center justify-center font-bold text-white text-sm flex-shrink-0">
-                  {((prompt as any).profiles.full_name ?? (prompt as any).profiles.email ?? '?')[0]?.toUpperCase()}
+                  {(autorProfile.full_name ?? autorProfile.email ?? '?')[0]?.toUpperCase()}
                 </div>
                 <div className="min-w-0">
                   <p className="text-sm text-white font-medium">
-                    {(prompt as any).profiles.full_name ?? (prompt as any).profiles.email}
+                    {autorProfile.full_name ?? autorProfile.email}
                   </p>
-                  {(prompt as any).profiles.instituicao && (
-                    <p className="text-xs text-zinc-500 mt-0.5">{(prompt as any).profiles.instituicao}</p>
+                  {autorProfile.instituicao && (
+                    <p className="text-xs text-zinc-500 mt-0.5">{autorProfile.instituicao}</p>
                   )}
-                  {(prompt as any).profiles.bio && (
-                    <p className="text-xs text-zinc-600 mt-1 line-clamp-2">{(prompt as any).profiles.bio}</p>
+                  {autorProfile.bio && (
+                    <p className="text-xs text-zinc-600 mt-1 line-clamp-2">{autorProfile.bio}</p>
                   )}
                 </div>
               </div>

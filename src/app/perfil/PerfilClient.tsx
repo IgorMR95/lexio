@@ -13,7 +13,6 @@ interface Props {
 }
 
 const TABS = [
-  { id: 'dashboard', label: 'Dashboard' },
   { id: 'perfil', label: 'Meu Perfil' },
   { id: 'prompts', label: 'Meus Prompts' },
   { id: 'grupos', label: 'Grupos' },
@@ -25,7 +24,7 @@ export function PerfilClient({ user, profile, meusPrompts, meusGrupos }: Props) 
   const supabase = createClient()
   const [activeTab, setActiveTab] = useState(() => {
     const tab = searchParams.get('tab')
-    return TABS.find(t => t.id === tab) ? tab! : 'dashboard'
+    return TABS.find(t => t.id === tab) ? tab! : 'perfil'
   })
 
   return (

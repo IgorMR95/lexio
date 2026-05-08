@@ -34,7 +34,7 @@ export default function AcademyPage() {
     <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
       <div className="text-center mb-12">
         <span className="text-xs text-blue-400 bg-blue-500/10 border border-blue-500/20 px-3 py-1 rounded-full">Em breve</span>
-        <h1 className="text-3xl font-bold text-white mt-4 mb-3">Lexio Academy</h1>
+        <h1 className="text-3xl font-bold text-white mt-4 mb-3">Midori Academy</h1>
         <p className="text-zinc-500 max-w-xl mx-auto">
           Cursos e tutoriais sobre o uso de inteligência artificial no direito.
           Para advogados, magistrados, defensores e acadêmicos.
@@ -73,7 +73,7 @@ export default function AcademyPage() {
 
       <div className="mt-14 p-8 rounded-2xl border border-zinc-800 bg-zinc-900/30 text-center">
         <h2 className="text-xl font-bold text-white mb-2">Quer ser notificado quando lançarmos?</h2>
-        <p className="text-zinc-500 text-sm mb-5">Crie sua conta gratuita e fique por dentro de todas as novidades do Lexio Academy.</p>
+        <p className="text-zinc-500 text-sm mb-5">Crie sua conta gratuita e fique por dentro de todas as novidades do Midori Academy.</p>
         <a href="/signup" className="inline-block px-6 py-2.5 rounded-lg bg-white text-zinc-950 font-semibold text-sm hover:bg-zinc-100 transition-colors">
           Criar conta grátis
         </a>

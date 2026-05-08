@@ -38,7 +38,7 @@ export function ImportTab({ areas, userId }: Props) {
     ])
     const wb = XLSX.utils.book_new()
     XLSX.utils.book_append_sheet(wb, ws, 'Prompts')
-    XLSX.writeFile(wb, 'template-lexio.xlsx')
+    XLSX.writeFile(wb, 'template-midori.xlsx')
   }
 
   const handleImport = async () => {

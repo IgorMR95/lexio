@@ -147,7 +147,7 @@ function PromptsTab({ areas, categorias, subcategorias }: Props) {
     const ws = XLSX.utils.json_to_sheet(rows)
     const wb = XLSX.utils.book_new()
     XLSX.utils.book_append_sheet(wb, ws, 'Prompts')
-    XLSX.writeFile(wb, `lexio-base-completa-${new Date().toISOString().slice(0, 10)}.xlsx`)
+    XLSX.writeFile(wb, `midori-base-completa-${new Date().toISOString().slice(0, 10)}.xlsx`)
   }
 
   return (

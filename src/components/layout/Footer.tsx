@@ -37,7 +37,7 @@ export function Footer() {
           </div>
         </div>
         <div className="mt-8 pt-8 border-t border-zinc-800 flex items-center justify-between">
-          <p className="text-xs text-zinc-600">© 2026 Lexio. Todos os direitos reservados.</p>
+          <p className="text-xs text-zinc-600">© 2026 Midori. Todos os direitos reservados.</p>
           <p className="text-xs text-zinc-600">Feito para juristas</p>
         </div>
       </div>

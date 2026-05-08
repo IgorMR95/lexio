@@ -85,7 +85,7 @@ export function ConsultaClient({ categorias, subcategorias, subniveis, areas, is
     const header = Object.keys(rows[0]).join(',')
     const csv = [header, ...rows.map(r => Object.values(r).map(v => `"${v}"`).join(','))].join('\n')
     const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' })
-    const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'lexio-prompts.csv'; a.click()
+    const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'midori-prompts.csv'; a.click()
   }
 
   const exportExcel = async () => {
@@ -108,7 +108,7 @@ export function ConsultaClient({ categorias, subcategorias, subniveis, areas, is
     const ws = XLSX.utils.json_to_sheet(rows)
     const wb = XLSX.utils.book_new()
     XLSX.utils.book_append_sheet(wb, ws, 'Prompts')
-    XLSX.writeFile(wb, 'lexio-prompts.xlsx')
+    XLSX.writeFile(wb, 'midori-prompts.xlsx')
   }
 
   const clearFilters = () => {

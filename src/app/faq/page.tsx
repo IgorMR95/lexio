@@ -1,7 +1,7 @@
 const faqs = [
   {
-    q: 'O que é o Lexio?',
-    a: 'Lexio é uma base de prompts de inteligência artificial especialmente desenvolvida para profissionais e acadêmicos do direito. Reúne prompts organizados por categoria profissional, área do direito e nível de atuação.',
+    q: 'O que é o Midori?',
+    a: 'Midori é uma base de prompts de inteligência artificial especialmente desenvolvida para profissionais e acadêmicos do direito. Reúne prompts organizados por categoria profissional, área do direito e nível de atuação.',
   },
   {
     q: 'Preciso criar uma conta para usar?',
@@ -29,7 +29,7 @@ const faqs = [
   },
   {
     q: 'Posso usar os prompts comercialmente?',
-    a: 'Os prompts são de uso livre para qualquer finalidade profissional ou acadêmica. O Lexio é uma plataforma colaborativa mantida pela comunidade jurídica.',
+    a: 'Os prompts são de uso livre para qualquer finalidade profissional ou acadêmica. O Midori é uma plataforma colaborativa mantida pela comunidade jurídica.',
   },
 ]
 
@@ -38,7 +38,7 @@ export default function FAQPage() {
     <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
       <div className="text-center mb-12">
         <h1 className="text-3xl font-bold text-white mb-3">Perguntas frequentes</h1>
-        <p className="text-zinc-500">Tire suas dúvidas sobre o Lexio</p>
+        <p className="text-zinc-500">Tire suas dúvidas sobre o Midori</p>
       </div>
 
       <div className="space-y-4">

@@ -9,18 +9,20 @@ export default async function PerfilPage() {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  const { data: profile } = await supabase.from('profiles').select('*').eq('id', user.id).single()
-
-  const { data: meusPrompts } = await supabase
-    .from('prompts')
-    .select('id, titulo, status, created_at, internacional, idioma')
-    .eq('autor_id', user.id)
-    .order('created_at', { ascending: false })
-
-  const { data: meusGrupos } = await (supabase as any)
-    .from('grupo_membros')
-    .select('papel, joined_at, grupos(id, nome, descricao, tipo, criado_por)')
-    .eq('user_id', user.id)
+  const [
+    { data: profile },
+    { data: meusPrompts },
+    { data: meusGrupos },
+  ] = await Promise.all([
+    supabase.from('profiles').select('*').eq('id', user.id).single(),
+    supabase.from('prompts')
+      .select('id, titulo, status, created_at, internacional, idioma, areas_direito(nome)')
+      .eq('autor_id', user.id)
+      .order('created_at', { ascending: false }),
+    (supabase as any).from('grupo_membros')
+      .select('papel, joined_at, grupos(id, nome, descricao, tipo, criado_por)')
+      .eq('user_id', user.id),
+  ])
 
   return (
     <PerfilClient

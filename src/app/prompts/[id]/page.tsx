@@ -9,31 +9,40 @@ export default async function PromptPage({ params }: { params: { id: string } })
   const { id } = params
   const supabase = createClient()
 
-  const { data: prompt } = await supabase
-    .from('prompts')
-    .select(`
-      *,
-      categorias_principais(id, nome, slug),
-      subcategorias(id, nome, slug),
-      subniveis(id, nome, slug),
-      areas_direito(id, nome, slug)
-    `)
-    .eq('id', id)
-    .in('status', ['ativo', 'aprovado'])
-    .single()
-
-  if (!prompt) notFound()
-
   const { data: { user } } = await supabase.auth.getUser()
   const isAdmin = user
     ? (await supabase.from('profiles').select('role').eq('id', user.id).single()).data?.role === 'admin'
     : false
 
-  // Busca o autor separadamente apenas se autor_id existir
+  // Admin e dono podem ver qualquer status; outros apenas ativo/aprovado
+  const query = supabase
+    .from('prompts')
+    .select(`*, categorias_principais(id, nome, slug), subcategorias(id, nome, slug), subniveis(id, nome, slug), areas_direito(id, nome, slug)`)
+    .eq('id', id)
+
+  const { data: prompt } = user && !isAdmin
+    ? await query.or(`status.in.(ativo,aprovado),autor_id.eq.${user.id}`).single()
+    : isAdmin
+      ? await query.single()
+      : await query.in('status', ['ativo', 'aprovado']).single()
+
+  if (!prompt) notFound()
+
+  const isOwner = user?.id === (prompt as any).autor_id
+  const isPending = (prompt as any).status === 'pendente' || (prompt as any).status === 'inativo'
+
   const autorId = (prompt as any).autor_id
   const autorProfile = autorId
     ? (await supabase.from('profiles').select('full_name, email, bio, instituicao').eq('id', autorId).single()).data
     : null
+
+  const statusMap: Record<string, { label: string; color: string }> = {
+    pendente: { label: 'Aguardando aprovação', color: 'bg-amber-500/10 text-amber-400 border-amber-500/20' },
+    inativo:  { label: 'Inativo',              color: 'bg-zinc-500/10 text-zinc-400 border-zinc-700' },
+    aprovado: { label: 'Aprovado',             color: 'bg-green-500/10 text-green-400 border-green-500/20' },
+    ativo:    { label: 'Ativo',                color: 'bg-green-500/10 text-green-400 border-green-500/20' },
+  }
+  const statusInfo = statusMap[(prompt as any).status]
 
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
@@ -43,57 +52,50 @@ export default async function PromptPage({ params }: { params: { id: string } })
         </Link>
       </div>
 
+      {/* Banner de status para prompts não publicados */}
+      {isPending && (isOwner || isAdmin) && (
+        <div className="mb-6 flex items-center gap-3 p-4 rounded-xl border border-amber-500/20 bg-amber-500/5">
+          <span className={`px-2.5 py-1 rounded-full text-xs border font-medium ${statusInfo?.color}`}>
+            {statusInfo?.label}
+          </span>
+          <p className="text-sm text-zinc-400">
+            {isAdmin
+              ? 'Visível apenas para você (admin) e o autor.'
+              : 'Seu prompt está aguardando revisão. Apenas você e os administradores podem vê-lo.'}
+          </p>
+        </div>
+      )}
+
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Conteúdo principal */}
         <div className="lg:col-span-2">
-          <h1 className="text-2xl font-bold text-white mb-3">{prompt.titulo}</h1>
+          <h1 className="text-2xl font-bold text-white mb-3">{(prompt as any).titulo}</h1>
 
-          {prompt.descricao_curta && (
-            <p className="text-zinc-400 mb-6 leading-relaxed">{prompt.descricao_curta}</p>
+          {(prompt as any).descricao_curta && (
+            <p className="text-zinc-400 mb-6 leading-relaxed">{(prompt as any).descricao_curta}</p>
           )}
 
           <div className="relative">
             <div className="absolute top-3 right-3 z-10">
-              <CopyButton text={prompt.texto_completo} />
+              <CopyButton text={(prompt as any).texto_completo} />
             </div>
             <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-5 pr-24">
               <pre className="text-sm text-zinc-300 whitespace-pre-wrap leading-relaxed font-sans">
-                {prompt.texto_completo}
+                {(prompt as any).texto_completo}
               </pre>
             </div>
           </div>
 
-          {prompt.tags.length > 0 && (
+          {(prompt as any).tags?.length > 0 && (
             <div className="mt-4 flex flex-wrap gap-2">
-              {(prompt.tags as string[]).map(tag => (
-                <span key={tag} className="px-2.5 py-1 rounded-md bg-zinc-800 text-zinc-400 text-xs">
-                  #{tag}
-                </span>
+              {((prompt as any).tags as string[]).map((tag: string) => (
+                <span key={tag} className="px-2.5 py-1 rounded-md bg-zinc-800 text-zinc-400 text-xs">#{tag}</span>
               ))}
-            </div>
-          )}
-
-          {isAdmin && (
-            <div className="mt-6 flex gap-3">
-              <Link
-                href={`/admin/prompts/${prompt.id}/edit`}
-                className="px-4 py-2 rounded-lg bg-zinc-800 text-zinc-300 text-sm hover:bg-zinc-700 transition-colors"
-              >
-                Editar
-              </Link>
-              <form action={`/api/prompts/${prompt.id}/delete`} method="POST">
-                <button
-                  type="submit"
-                  className="px-4 py-2 rounded-lg bg-red-500/10 text-red-400 border border-red-500/20 text-sm hover:bg-red-500/20 transition-colors"
-                >
-                  Deletar
-                </button>
-              </form>
             </div>
           )}
         </div>
 
-        {/* Sidebar com metadados */}
+        {/* Sidebar */}
         <div className="space-y-4">
           <div className="p-4 rounded-xl border border-zinc-800 bg-zinc-900/50">
             <h3 className="text-xs font-semibold text-zinc-400 uppercase tracking-wider mb-3">Classificação</h3>
@@ -131,7 +133,7 @@ export default async function PromptPage({ params }: { params: { id: string } })
               <div>
                 <dt className="text-xs text-zinc-600">Publicado em</dt>
                 <dd className="text-sm text-zinc-300">
-                  {new Date(prompt.created_at).toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' })}
+                  {new Date((prompt as any).created_at).toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' })}
                 </dd>
               </div>
               {(prompt as any).internacional && (
@@ -144,6 +146,14 @@ export default async function PromptPage({ params }: { params: { id: string } })
                   </dd>
                 </div>
               )}
+              <div>
+                <dt className="text-xs text-zinc-600">Status</dt>
+                <dd className="mt-0.5">
+                  <span className={`px-2 py-0.5 rounded-full text-xs border ${statusInfo?.color}`}>
+                    {statusInfo?.label}
+                  </span>
+                </dd>
+              </div>
             </dl>
           </div>
 

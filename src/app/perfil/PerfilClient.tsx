@@ -1,7 +1,7 @@
 'use client'
 
-import { useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useState, useEffect } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import Link from 'next/link'
 
@@ -13,6 +13,7 @@ interface Props {
 }
 
 const TABS = [
+  { id: 'dashboard', label: 'Dashboard' },
   { id: 'perfil', label: 'Meu Perfil' },
   { id: 'prompts', label: 'Meus Prompts' },
   { id: 'grupos', label: 'Grupos' },
@@ -20,8 +21,12 @@ const TABS = [
 
 export function PerfilClient({ user, profile, meusPrompts, meusGrupos }: Props) {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const supabase = createClient()
-  const [activeTab, setActiveTab] = useState('perfil')
+  const [activeTab, setActiveTab] = useState(() => {
+    const tab = searchParams.get('tab')
+    return TABS.find(t => t.id === tab) ? tab! : 'dashboard'
+  })
 
   return (
     <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
@@ -47,6 +52,9 @@ export function PerfilClient({ user, profile, meusPrompts, meusGrupos }: Props) 
         ))}
       </div>
 
+      {activeTab === 'dashboard' && (
+        <DashboardTab prompts={meusPrompts} profile={profile} />
+      )}
       {activeTab === 'perfil' && (
         <EditarPerfilTab user={user} profile={profile} />
       )}
@@ -56,6 +64,78 @@ export function PerfilClient({ user, profile, meusPrompts, meusGrupos }: Props) 
       {activeTab === 'grupos' && (
         <GruposTab userId={user.id} meusGrupos={meusGrupos} />
       )}
+    </div>
+  )
+}
+
+// ── Dashboard ─────────────────────────────────────────────────────────────────
+
+function DashboardTab({ prompts, profile }: { prompts: any[]; profile: any }) {
+  const total = prompts.length
+  const aprovados = prompts.filter(p => p.status === 'aprovado' || p.status === 'ativo').length
+  const pendentes = prompts.filter(p => p.status === 'pendente').length
+
+  const statusColor: Record<string, string> = {
+    aprovado: 'bg-green-500/10 text-green-400 border-green-500/20',
+    ativo:    'bg-green-500/10 text-green-400 border-green-500/20',
+    pendente: 'bg-amber-500/10 text-amber-400 border-amber-500/20',
+    inativo:  'bg-zinc-500/10 text-zinc-400 border-zinc-700',
+  }
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <p className="text-zinc-400 text-sm">Olá, <span className="text-white font-medium">{profile?.full_name ?? 'usuário'}</span></p>
+        <Link href="/dashboard/novo-prompt" className="flex items-center gap-2 px-4 py-2 rounded-lg bg-white text-zinc-950 font-semibold text-sm hover:bg-zinc-100 transition-colors">
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+          </svg>
+          Novo prompt
+        </Link>
+      </div>
+
+      <div className="grid grid-cols-3 gap-4">
+        <div className="p-4 rounded-xl border border-zinc-800 bg-zinc-900/50">
+          <p className="text-xs text-zinc-500 mb-1">Enviados</p>
+          <p className="text-2xl font-bold text-white">{total}</p>
+        </div>
+        <div className="p-4 rounded-xl border border-zinc-800 bg-zinc-900/50">
+          <p className="text-xs text-zinc-500 mb-1">Publicados</p>
+          <p className="text-2xl font-bold text-green-400">{aprovados}</p>
+        </div>
+        <div className="p-4 rounded-xl border border-zinc-800 bg-zinc-900/50">
+          <p className="text-xs text-zinc-500 mb-1">Pendentes</p>
+          <p className="text-2xl font-bold text-amber-400">{pendentes}</p>
+        </div>
+      </div>
+
+      <div>
+        <p className="text-xs font-semibold text-zinc-400 uppercase tracking-wider mb-3">Últimos prompts</p>
+        {prompts.length === 0 ? (
+          <div className="text-center py-10 border border-dashed border-zinc-800 rounded-xl">
+            <p className="text-zinc-500 text-sm mb-3">Você ainda não enviou nenhum prompt</p>
+            <Link href="/dashboard/novo-prompt" className="text-sm text-white hover:underline">Enviar meu primeiro prompt →</Link>
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {prompts.slice(0, 5).map(p => (
+              <Link key={p.id} href={`/prompts/${p.id}`}
+                className="flex items-center justify-between p-4 rounded-xl border border-zinc-800 bg-zinc-900/30 hover:border-zinc-700 transition-colors">
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-white truncate">{p.titulo}</p>
+                  <p className="text-xs text-zinc-600 mt-0.5">
+                    {p.areas_direito?.nome && `${p.areas_direito.nome} · `}
+                    {new Date(p.created_at).toLocaleDateString('pt-BR')}
+                  </p>
+                </div>
+                <span className={`ml-4 px-2 py-0.5 rounded-full text-xs border flex-shrink-0 ${statusColor[p.status] ?? statusColor.inativo}`}>
+                  {p.status}
+                </span>
+              </Link>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   )
 }

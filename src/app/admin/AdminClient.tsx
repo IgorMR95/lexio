@@ -1517,7 +1517,7 @@ function AcademyAdminTab() {
 
   const showForm = editing !== undefined
 
-  const tipoLabel: Record<string, string> = { curso: '🎓 Curso', artigo: '📄 Artigo', video: '▶ Vídeo', texto: '📝 Texto' }
+  const tipoLabel: Record<string, string> = { curso: 'Curso', artigo: 'Artigo', video: 'Vídeo', texto: 'Texto' }
   const nivelColor: Record<string, string> = {
     Iniciante: 'bg-green-500/10 text-green-400 border-green-500/20',
     Intermediário: 'bg-blue-500/10 text-blue-400 border-blue-500/20',

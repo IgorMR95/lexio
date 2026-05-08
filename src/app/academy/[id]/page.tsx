@@ -7,27 +7,27 @@ export const dynamic = 'force-dynamic'
 const tipoConfig: Record<string, { label: string; gradient: string; accent: string; iconBg: string }> = {
   curso: {
     label: 'Curso',
-    gradient: 'from-violet-900/60 via-zinc-900 to-zinc-950',
-    accent: 'text-violet-400 bg-violet-500/10 border-violet-500/20',
-    iconBg: 'bg-violet-500/10 border-violet-500/20 text-violet-400',
+    gradient: 'from-green-900/50 via-zinc-900 to-zinc-950',
+    accent: 'text-green-400 bg-green-500/10 border-green-500/20',
+    iconBg: 'bg-green-500/10 border-green-500/20 text-green-400',
   },
   video: {
     label: 'Vídeo',
-    gradient: 'from-rose-900/50 via-zinc-900 to-zinc-950',
-    accent: 'text-rose-400 bg-rose-500/10 border-rose-500/20',
-    iconBg: 'bg-rose-500/10 border-rose-500/20 text-rose-400',
+    gradient: 'from-teal-900/50 via-zinc-900 to-zinc-950',
+    accent: 'text-teal-400 bg-teal-500/10 border-teal-500/20',
+    iconBg: 'bg-teal-500/10 border-teal-500/20 text-teal-400',
   },
   artigo: {
     label: 'Artigo',
-    gradient: 'from-sky-900/50 via-zinc-900 to-zinc-950',
-    accent: 'text-sky-400 bg-sky-500/10 border-sky-500/20',
-    iconBg: 'bg-sky-500/10 border-sky-500/20 text-sky-400',
-  },
-  texto: {
-    label: 'Texto',
     gradient: 'from-emerald-900/50 via-zinc-900 to-zinc-950',
     accent: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20',
     iconBg: 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400',
+  },
+  texto: {
+    label: 'Texto',
+    gradient: 'from-green-950/60 via-zinc-900 to-zinc-950',
+    accent: 'text-green-300 bg-green-500/8 border-green-500/15',
+    iconBg: 'bg-green-500/8 border-green-500/15 text-green-300',
   },
 }
 

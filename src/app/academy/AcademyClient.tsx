@@ -34,8 +34,8 @@ const tipoConfig: Record<string, { label: string; icon: React.ReactNode; gradien
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 14l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14z" />
       </svg>
     ),
-    gradient: 'from-violet-600/30 to-indigo-600/10',
-    accent: 'text-violet-400 bg-violet-500/10 border-violet-500/20',
+    gradient: 'from-green-700/30 to-emerald-700/10',
+    accent: 'text-green-400 bg-green-500/10 border-green-500/20',
   },
   video: {
     label: 'Vídeo',
@@ -45,8 +45,8 @@ const tipoConfig: Record<string, { label: string; icon: React.ReactNode; gradien
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
       </svg>
     ),
-    gradient: 'from-rose-600/30 to-orange-600/10',
-    accent: 'text-rose-400 bg-rose-500/10 border-rose-500/20',
+    gradient: 'from-teal-700/30 to-cyan-700/10',
+    accent: 'text-teal-400 bg-teal-500/10 border-teal-500/20',
   },
   artigo: {
     label: 'Artigo',
@@ -55,8 +55,8 @@ const tipoConfig: Record<string, { label: string; icon: React.ReactNode; gradien
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
       </svg>
     ),
-    gradient: 'from-sky-600/30 to-cyan-600/10',
-    accent: 'text-sky-400 bg-sky-500/10 border-sky-500/20',
+    gradient: 'from-emerald-700/30 to-green-900/10',
+    accent: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20',
   },
   texto: {
     label: 'Texto',
@@ -65,8 +65,8 @@ const tipoConfig: Record<string, { label: string; icon: React.ReactNode; gradien
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 6h16M4 10h16M4 14h10" />
       </svg>
     ),
-    gradient: 'from-emerald-600/30 to-teal-600/10',
-    accent: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20',
+    gradient: 'from-green-900/40 to-zinc-900/10',
+    accent: 'text-green-300 bg-green-500/8 border-green-500/15',
   },
 }
 
@@ -154,18 +154,18 @@ export function AcademyClient({ conteudos }: { conteudos: Conteudo[] }) {
         <div className="absolute inset-0 bg-gradient-to-br from-zinc-950 via-zinc-900 to-zinc-950" />
         <div className="absolute inset-0 opacity-30"
           style={{ backgroundImage: 'linear-gradient(to right, #18181b 1px, transparent 1px), linear-gradient(to bottom, #18181b 1px, transparent 1px)', backgroundSize: '64px 64px' }} />
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[600px] h-[300px] bg-violet-600/10 rounded-full blur-3xl" />
-        <div className="absolute bottom-0 right-0 w-[400px] h-[200px] bg-indigo-600/10 rounded-full blur-3xl" />
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[600px] h-[300px] bg-green-600/10 rounded-full blur-3xl" />
+        <div className="absolute bottom-0 right-0 w-[400px] h-[200px] bg-emerald-600/10 rounded-full blur-3xl" />
 
         <div className="relative max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
           <div className="max-w-2xl">
-            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-violet-500/10 border border-violet-500/20 text-violet-400 text-xs font-medium mb-6">
-              <span className="w-1.5 h-1.5 rounded-full bg-violet-400 animate-pulse" />
+            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-green-500/10 border border-green-500/20 text-green-400 text-xs font-medium mb-6">
+              <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
               Plataforma de aprendizado jurídico
             </div>
             <h1 className="text-4xl sm:text-5xl font-bold text-white leading-tight mb-4">
               Aprenda a usar{' '}
-              <span className="bg-gradient-to-r from-violet-400 to-indigo-400 bg-clip-text text-transparent">
+              <span className="bg-gradient-to-r from-green-400 to-emerald-400 bg-clip-text text-transparent">
                 IA no Direito
               </span>
             </h1>
@@ -173,7 +173,7 @@ export function AcademyClient({ conteudos }: { conteudos: Conteudo[] }) {
               Cursos, vídeos e artigos para advogados, magistrados, defensores e acadêmicos que querem dominar a inteligência artificial na prática jurídica.
             </p>
             <div className="flex items-center gap-6">
-              <a href="/signup" className="px-6 py-3 rounded-xl bg-violet-600 hover:bg-violet-500 text-white font-semibold text-sm transition-colors shadow-lg shadow-violet-900/30">
+              <a href="/signup" className="px-6 py-3 rounded-xl bg-green-600 hover:bg-green-500 text-white font-semibold text-sm transition-colors shadow-lg shadow-green-900/30">
                 Começar gratuitamente
               </a>
               <a href="#conteudos" className="text-sm text-zinc-400 hover:text-white transition-colors flex items-center gap-1.5">
@@ -280,7 +280,7 @@ export function AcademyClient({ conteudos }: { conteudos: Conteudo[] }) {
       {/* ── CTA Banner ── */}
       <div className="border-t border-zinc-800">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
-          <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-violet-900/50 via-zinc-900 to-indigo-900/30 border border-violet-500/20 p-10 text-center">
+          <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-green-900/40 via-zinc-900 to-emerald-900/20 border border-green-500/20 p-10 text-center">
             <div className="absolute inset-0 opacity-10"
               style={{ backgroundImage: 'radial-gradient(circle, white 1px, transparent 1px)', backgroundSize: '32px 32px' }} />
             <div className="relative">
@@ -289,7 +289,7 @@ export function AcademyClient({ conteudos }: { conteudos: Conteudo[] }) {
                 Crie sua conta gratuitamente e acesse todos os conteúdos do Midori Academy. Aprenda no seu ritmo.
               </p>
               <div className="flex items-center gap-4 justify-center">
-                <a href="/signup" className="px-6 py-3 rounded-xl bg-white text-zinc-950 font-bold text-sm hover:bg-zinc-100 transition-colors shadow-xl">
+                <a href="/signup" className="px-6 py-3 rounded-xl bg-green-600 hover:bg-green-500 text-white font-bold text-sm transition-colors shadow-xl shadow-green-900/30">
                   Criar conta grátis
                 </a>
                 <a href="/prompts" className="px-6 py-3 rounded-xl border border-zinc-700 text-zinc-300 text-sm font-medium hover:border-zinc-500 hover:text-white transition-colors">

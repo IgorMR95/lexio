@@ -67,12 +67,17 @@ export function Navbar() {
   const allLinks = [...publicLinks, ...privateLinks]
 
   return (
-    <header className="border-b border-zinc-800 bg-zinc-950/80 backdrop-blur-sm sticky top-0 z-50">
+    <header className="border-b border-zinc-800 bg-zinc-950/90 backdrop-blur-sm sticky top-0 z-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
-          <Link href="/" className="flex items-center gap-2">
-            <span className="text-xl font-bold tracking-tight text-white">midori</span>
-            <span className="text-xs text-zinc-500 hidden sm:block">prompts jurídicos</span>
+          <Link href="/" className="flex items-center gap-2.5">
+            <div className="w-7 h-7 rounded-lg bg-green-500/15 border border-green-500/30 flex items-center justify-center">
+              <svg className="w-4 h-4 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 3l14 9-14 9V3z" />
+              </svg>
+            </div>
+            <span className="text-base font-bold tracking-tight text-white">midori</span>
+            <span className="text-xs text-zinc-600 hidden sm:block">prompts jurídicos</span>
           </Link>
 
           <nav className="hidden md:flex items-center gap-6">
@@ -95,7 +100,7 @@ export function Navbar() {
             {user ? (
               <div className="flex items-center gap-3">
                 {isAdmin ? (
-                  <span className="text-xs px-2.5 py-1 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20 font-medium">
+                  <span className="text-xs px-2.5 py-1 rounded-full bg-green-500/10 text-green-400 border border-green-500/20 font-medium">
                     Admin
                   </span>
                 ) : (
@@ -112,25 +117,19 @@ export function Navbar() {
               </div>
             ) : (
               <div className="flex items-center gap-2">
-                <Link
-                  href="/login"
-                  className="text-sm text-zinc-400 hover:text-white transition-colors"
-                >
+                <Link href="/login" className="text-sm text-zinc-400 hover:text-white transition-colors">
                   Entrar
                 </Link>
                 <Link
                   href="/signup"
-                  className="text-sm px-3 py-1.5 rounded-md bg-white text-zinc-950 font-medium hover:bg-zinc-100 transition-colors"
+                  className="text-sm px-3 py-1.5 rounded-md bg-green-600 hover:bg-green-500 text-white font-medium transition-colors"
                 >
                   Criar conta
                 </Link>
               </div>
             )}
 
-            <button
-              className="md:hidden text-zinc-400 hover:text-white"
-              onClick={() => setMenuOpen(!menuOpen)}
-            >
+            <button className="md:hidden text-zinc-400 hover:text-white" onClick={() => setMenuOpen(!menuOpen)}>
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 {menuOpen
                   ? <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -156,7 +155,7 @@ export function Navbar() {
             {user && (
               <div className="pt-2 border-t border-zinc-800 mt-1">
                 {isAdmin ? (
-                  <span className="text-xs px-2.5 py-1 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20 font-medium">
+                  <span className="text-xs px-2.5 py-1 rounded-full bg-green-500/10 text-green-400 border border-green-500/20 font-medium">
                     Admin
                   </span>
                 ) : (

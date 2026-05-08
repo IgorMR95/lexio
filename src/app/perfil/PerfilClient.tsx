@@ -202,7 +202,7 @@ function EditarPerfilTab({ user, profile }: { user: { id: string; email: string 
         </div>
         <button type="submit" disabled={saving}
           className="px-5 py-2.5 rounded-lg bg-white text-zinc-950 font-semibold text-sm hover:bg-zinc-100 transition-colors disabled:opacity-50">
-          {saving ? 'Salvando...' : saved ? '✓ Salvo' : 'Salvar alterações'}
+          {saving ? 'Salvando...' : saved ? 'Salvo' : 'Salvar alterações'}
         </button>
       </form>
 

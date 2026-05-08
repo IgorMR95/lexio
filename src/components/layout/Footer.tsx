@@ -6,8 +6,15 @@ export function Footer() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
         <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
           <div className="col-span-2 md:col-span-1">
-            <span className="text-lg font-bold text-white">midori</span>
-            <p className="mt-2 text-sm text-zinc-500">
+            <div className="flex items-center gap-2 mb-3">
+              <div className="w-6 h-6 rounded-md bg-green-500/15 border border-green-500/30 flex items-center justify-center">
+                <svg className="w-3.5 h-3.5 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 3l14 9-14 9V3z" />
+                </svg>
+              </div>
+              <span className="text-base font-bold text-white">midori</span>
+            </div>
+            <p className="text-sm text-zinc-500">
               A base de prompts jurídicos para profissionais e acadêmicos do direito.
             </p>
           </div>
@@ -24,7 +31,7 @@ export function Footer() {
             <ul className="space-y-2">
               <li><Link href="/login" className="text-sm text-zinc-500 hover:text-white transition-colors">Entrar</Link></li>
               <li><Link href="/signup" className="text-sm text-zinc-500 hover:text-white transition-colors">Criar conta</Link></li>
-              <li><Link href="/dashboard" className="text-sm text-zinc-500 hover:text-white transition-colors">Dashboard</Link></li>
+              <li><Link href="/perfil" className="text-sm text-zinc-500 hover:text-white transition-colors">Perfil</Link></li>
             </ul>
           </div>
           <div>

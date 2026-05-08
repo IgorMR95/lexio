@@ -28,6 +28,7 @@ const TABS = [
   { id: 'estrutura', label: 'Estrutura' },
   { id: 'areas', label: 'Áreas' },
   { id: 'grupos', label: 'Grupos' },
+  { id: 'academy', label: 'Academy' },
   { id: 'auditoria', label: 'Auditoria' },
 ]
 
@@ -112,6 +113,7 @@ export function AdminClient({ currentUserId, profiles: initialProfiles, auditLog
         }} />
       )}
       {activeTab === 'grupos' && <GruposAdminTab />}
+      {activeTab === 'academy' && <AcademyAdminTab />}
       {activeTab === 'auditoria' && <AuditoriaTab logs={auditLogs} />}
     </div>
   )
@@ -1404,6 +1406,316 @@ function GruposAdminTab() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ── Academy Admin ─────────────────────────────────────────────────────────────
+
+const ACADEMY_TIPOS = ['curso', 'artigo', 'video', 'texto'] as const
+const ACADEMY_NIVEIS = ['Iniciante', 'Intermediário', 'Avançado'] as const
+
+const emptyForm = () => ({
+  tipo: 'texto',
+  titulo: '',
+  descricao: '',
+  conteudo: '',
+  url_video: '',
+  url_externo: '',
+  nivel: '',
+  categoria: '',
+  duracao: '',
+  ordem: 0,
+  publicado: false,
+})
+
+function AcademyAdminTab() {
+  const supabase = createClient()
+  const [conteudos, setConteudos] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
+  const [editing, setEditing] = useState<any | null>(null)
+  const [form, setForm] = useState<ReturnType<typeof emptyForm>>(emptyForm())
+  const [saving, setSaving] = useState(false)
+  const [filtroTipo, setFiltroTipo] = useState('')
+
+  const load = useCallback(async () => {
+    setLoading(true)
+    const { data } = await (supabase as any)
+      .from('academy_conteudos')
+      .select('*')
+      .order('ordem', { ascending: true })
+      .order('created_at', { ascending: false })
+    setConteudos(data ?? [])
+    setLoading(false)
+  }, [])
+
+  useEffect(() => { load() }, [load])
+
+  const openCreate = () => {
+    setEditing(null)
+    setForm(emptyForm())
+  }
+
+  const openEdit = (c: any) => {
+    setEditing(c)
+    setForm({
+      tipo: c.tipo,
+      titulo: c.titulo,
+      descricao: c.descricao ?? '',
+      conteudo: c.conteudo ?? '',
+      url_video: c.url_video ?? '',
+      url_externo: c.url_externo ?? '',
+      nivel: c.nivel ?? '',
+      categoria: c.categoria ?? '',
+      duracao: c.duracao ?? '',
+      ordem: c.ordem ?? 0,
+      publicado: c.publicado ?? false,
+    })
+  }
+
+  const handleSave = async () => {
+    if (!form.titulo.trim()) return
+    setSaving(true)
+    const payload = {
+      tipo: form.tipo,
+      titulo: form.titulo.trim(),
+      descricao: form.descricao.trim() || null,
+      conteudo: form.conteudo.trim() || null,
+      url_video: form.url_video.trim() || null,
+      url_externo: form.url_externo.trim() || null,
+      nivel: form.nivel || null,
+      categoria: form.categoria.trim() || null,
+      duracao: form.duracao.trim() || null,
+      ordem: Number(form.ordem) || 0,
+      publicado: form.publicado,
+      updated_at: new Date().toISOString(),
+    }
+    if (editing) {
+      await (supabase as any).from('academy_conteudos').update(payload).eq('id', editing.id)
+    } else {
+      await (supabase as any).from('academy_conteudos').insert(payload)
+    }
+    setSaving(false)
+    setEditing(undefined)
+    setForm(emptyForm())
+    load()
+  }
+
+  const handleDelete = async (c: any) => {
+    if (!confirm(`Excluir "${c.titulo}"?`)) return
+    await (supabase as any).from('academy_conteudos').delete().eq('id', c.id)
+    load()
+  }
+
+  const togglePublicado = async (c: any) => {
+    await (supabase as any).from('academy_conteudos').update({ publicado: !c.publicado }).eq('id', c.id)
+    load()
+  }
+
+  const showForm = editing !== undefined
+
+  const tipoLabel: Record<string, string> = { curso: '🎓 Curso', artigo: '📄 Artigo', video: '▶ Vídeo', texto: '📝 Texto' }
+  const nivelColor: Record<string, string> = {
+    Iniciante: 'bg-green-500/10 text-green-400 border-green-500/20',
+    Intermediário: 'bg-blue-500/10 text-blue-400 border-blue-500/20',
+    Avançado: 'bg-purple-500/10 text-purple-400 border-purple-500/20',
+  }
+
+  const filtrados = filtroTipo ? conteudos.filter(c => c.tipo === filtroTipo) : conteudos
+
+  if (loading) return <div className="text-center py-16 text-zinc-500 text-sm">Carregando...</div>
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between flex-wrap gap-3">
+        <div className="flex gap-1 bg-zinc-900 p-1 rounded-lg w-fit">
+          <button onClick={() => setFiltroTipo('')}
+            className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${!filtroTipo ? 'bg-white text-zinc-950' : 'text-zinc-400 hover:text-white'}`}>
+            Todos ({conteudos.length})
+          </button>
+          {ACADEMY_TIPOS.map(t => (
+            <button key={t} onClick={() => setFiltroTipo(t)}
+              className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors capitalize ${filtroTipo === t ? 'bg-white text-zinc-950' : 'text-zinc-400 hover:text-white'}`}>
+              {t} ({conteudos.filter(c => c.tipo === t).length})
+            </button>
+          ))}
+        </div>
+        <button onClick={openCreate}
+          className="px-4 py-2 rounded-lg bg-white text-zinc-950 font-semibold text-sm hover:bg-zinc-100 transition-colors">
+          + Novo conteúdo
+        </button>
+      </div>
+
+      {filtrados.length === 0 ? (
+        <div className="text-center py-16 border border-dashed border-zinc-800 rounded-xl">
+          <p className="text-zinc-400 font-medium">Nenhum conteúdo ainda</p>
+          <p className="text-zinc-600 text-sm mt-1">Clique em &quot;+ Novo conteúdo&quot; para começar.</p>
+        </div>
+      ) : (
+        <div className="rounded-xl border border-zinc-800 overflow-hidden">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="bg-zinc-900/50 border-b border-zinc-800">
+                <th className="text-left px-4 py-3 text-xs font-medium text-zinc-500 w-8">Ord.</th>
+                <th className="text-left px-4 py-3 text-xs font-medium text-zinc-500">Título</th>
+                <th className="text-left px-4 py-3 text-xs font-medium text-zinc-500 hidden md:table-cell">Tipo</th>
+                <th className="text-left px-4 py-3 text-xs font-medium text-zinc-500 hidden lg:table-cell">Nível</th>
+                <th className="text-left px-4 py-3 text-xs font-medium text-zinc-500 hidden lg:table-cell">Categoria</th>
+                <th className="text-left px-4 py-3 text-xs font-medium text-zinc-500">Status</th>
+                <th className="text-right px-4 py-3 text-xs font-medium text-zinc-500">Ações</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-zinc-800/50">
+              {filtrados.map(c => (
+                <tr key={c.id} className="hover:bg-zinc-900/30 transition-colors">
+                  <td className="px-4 py-3 text-zinc-600 text-xs">{c.ordem}</td>
+                  <td className="px-4 py-3">
+                    <p className="text-white font-medium text-sm line-clamp-1">{c.titulo}</p>
+                    {c.descricao && <p className="text-zinc-600 text-xs mt-0.5 line-clamp-1">{c.descricao}</p>}
+                  </td>
+                  <td className="px-4 py-3 hidden md:table-cell">
+                    <span className="text-xs text-zinc-400">{tipoLabel[c.tipo]}</span>
+                  </td>
+                  <td className="px-4 py-3 hidden lg:table-cell">
+                    {c.nivel ? (
+                      <span className={`px-2 py-0.5 rounded-full text-xs border ${nivelColor[c.nivel]}`}>{c.nivel}</span>
+                    ) : <span className="text-zinc-700 text-xs">—</span>}
+                  </td>
+                  <td className="px-4 py-3 hidden lg:table-cell">
+                    <span className="text-zinc-500 text-xs">{c.categoria ?? '—'}</span>
+                  </td>
+                  <td className="px-4 py-3">
+                    <button onClick={() => togglePublicado(c)}
+                      className={`px-2 py-0.5 rounded-full text-xs border transition-colors ${c.publicado ? 'bg-green-500/10 text-green-400 border-green-500/20 hover:bg-green-500/20' : 'bg-zinc-800 text-zinc-500 border-zinc-700 hover:border-zinc-500'}`}>
+                      {c.publicado ? 'Publicado' : 'Rascunho'}
+                    </button>
+                  </td>
+                  <td className="px-4 py-3 text-right">
+                    <div className="flex items-center justify-end gap-3">
+                      <a href={`/academy/${c.id}`} target="_blank" className="text-xs text-zinc-600 hover:text-white transition-colors">Ver</a>
+                      <button onClick={() => openEdit(c)} className="text-xs text-zinc-400 hover:text-white transition-colors">Editar</button>
+                      <button onClick={() => handleDelete(c)} className="text-xs text-red-400/70 hover:text-red-400 transition-colors">Excluir</button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {/* Modal criar/editar */}
+      {showForm && (
+        <div className="fixed inset-0 bg-black/70 z-50 flex items-start justify-center p-4 overflow-y-auto">
+          <div className="bg-zinc-900 rounded-xl border border-zinc-700 w-full max-w-2xl my-4">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-zinc-800">
+              <h3 className="text-white font-semibold">{editing ? 'Editar conteúdo' : 'Novo conteúdo'}</h3>
+              <button onClick={() => { setEditing(undefined); setForm(emptyForm()) }} className="text-zinc-500 hover:text-white text-2xl leading-none">×</button>
+            </div>
+            <div className="p-6 space-y-4 max-h-[75vh] overflow-y-auto">
+              {/* Tipo + Publicado */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs text-zinc-400 mb-1.5">Tipo</label>
+                  <select value={form.tipo} onChange={e => setForm({ ...form, tipo: e.target.value })}
+                    className="w-full px-3 py-2 rounded-lg bg-zinc-800 border border-zinc-700 text-zinc-300 text-sm focus:outline-none">
+                    {ACADEMY_TIPOS.map(t => <option key={t} value={t} className="capitalize">{tipoLabel[t]}</option>)}
+                  </select>
+                </div>
+                <div className="flex flex-col justify-end">
+                  <label className="flex items-center gap-3 cursor-pointer">
+                    <button type="button" onClick={() => setForm({ ...form, publicado: !form.publicado })}
+                      className={`relative w-11 h-6 rounded-full transition-colors flex-shrink-0 ${form.publicado ? 'bg-green-500' : 'bg-zinc-700'}`}>
+                      <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full transition-transform ${form.publicado ? 'translate-x-5' : 'translate-x-0'}`} />
+                    </button>
+                    <span className="text-sm text-zinc-300">{form.publicado ? 'Publicado' : 'Rascunho'}</span>
+                  </label>
+                </div>
+              </div>
+
+              {/* Título */}
+              <div>
+                <label className="block text-xs text-zinc-400 mb-1.5">Título <span className="text-red-400">*</span></label>
+                <input value={form.titulo} onChange={e => setForm({ ...form, titulo: e.target.value })}
+                  className="w-full px-3 py-2 rounded-lg bg-zinc-800 border border-zinc-700 text-white text-sm focus:outline-none focus:border-zinc-500"
+                  placeholder="Título do conteúdo" />
+              </div>
+
+              {/* Descrição */}
+              <div>
+                <label className="block text-xs text-zinc-400 mb-1.5">Descrição curta</label>
+                <input value={form.descricao} onChange={e => setForm({ ...form, descricao: e.target.value })}
+                  className="w-full px-3 py-2 rounded-lg bg-zinc-800 border border-zinc-700 text-white text-sm focus:outline-none focus:border-zinc-500"
+                  placeholder="Breve descrição exibida nos cards" />
+              </div>
+
+              {/* Categoria + Nível + Duração + Ordem */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs text-zinc-400 mb-1.5">Categoria</label>
+                  <input value={form.categoria} onChange={e => setForm({ ...form, categoria: e.target.value })}
+                    className="w-full px-3 py-2 rounded-lg bg-zinc-800 border border-zinc-700 text-white text-sm focus:outline-none"
+                    placeholder="Ex: Fundamentos, Prática..." />
+                </div>
+                <div>
+                  <label className="block text-xs text-zinc-400 mb-1.5">Nível</label>
+                  <select value={form.nivel} onChange={e => setForm({ ...form, nivel: e.target.value })}
+                    className="w-full px-3 py-2 rounded-lg bg-zinc-800 border border-zinc-700 text-zinc-300 text-sm focus:outline-none">
+                    <option value="">— Sem nível —</option>
+                    {ACADEMY_NIVEIS.map(n => <option key={n} value={n}>{n}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs text-zinc-400 mb-1.5">Duração</label>
+                  <input value={form.duracao} onChange={e => setForm({ ...form, duracao: e.target.value })}
+                    className="w-full px-3 py-2 rounded-lg bg-zinc-800 border border-zinc-700 text-white text-sm focus:outline-none"
+                    placeholder="Ex: 1h 30min" />
+                </div>
+                <div>
+                  <label className="block text-xs text-zinc-400 mb-1.5">Ordem</label>
+                  <input type="number" value={form.ordem} onChange={e => setForm({ ...form, ordem: Number(e.target.value) })}
+                    className="w-full px-3 py-2 rounded-lg bg-zinc-800 border border-zinc-700 text-white text-sm focus:outline-none" />
+                </div>
+              </div>
+
+              {/* URL Vídeo (só para tipo video) */}
+              {form.tipo === 'video' && (
+                <div>
+                  <label className="block text-xs text-zinc-400 mb-1.5">URL do vídeo (YouTube embed ou direto)</label>
+                  <input value={form.url_video} onChange={e => setForm({ ...form, url_video: e.target.value })}
+                    className="w-full px-3 py-2 rounded-lg bg-zinc-800 border border-zinc-700 text-white text-sm focus:outline-none font-mono"
+                    placeholder="https://www.youtube.com/watch?v=..." />
+                </div>
+              )}
+
+              {/* URL Externo */}
+              <div>
+                <label className="block text-xs text-zinc-400 mb-1.5">Link externo {form.tipo === 'curso' ? '(plataforma do curso)' : '(opcional)'}</label>
+                <input value={form.url_externo} onChange={e => setForm({ ...form, url_externo: e.target.value })}
+                  className="w-full px-3 py-2 rounded-lg bg-zinc-800 border border-zinc-700 text-white text-sm focus:outline-none font-mono"
+                  placeholder="https://..." />
+              </div>
+
+              {/* Conteúdo completo */}
+              <div>
+                <label className="block text-xs text-zinc-400 mb-1.5">Conteúdo completo</label>
+                <textarea rows={10} value={form.conteudo} onChange={e => setForm({ ...form, conteudo: e.target.value })}
+                  className="w-full px-3 py-2 rounded-lg bg-zinc-800 border border-zinc-700 text-white text-sm focus:outline-none resize-none font-mono leading-relaxed"
+                  placeholder="Texto completo do conteúdo. Use quebras de linha normalmente." />
+                <p className="text-xs text-zinc-600 mt-1">Suporta quebras de linha. Para artigos e textos longos.</p>
+              </div>
+            </div>
+            <div className="px-6 py-4 border-t border-zinc-800 flex gap-3 justify-end">
+              <button onClick={() => { setEditing(undefined); setForm(emptyForm()) }}
+                className="px-4 py-2 text-sm text-zinc-400 hover:text-white transition-colors">Cancelar</button>
+              <button onClick={handleSave} disabled={saving || !form.titulo.trim()}
+                className="px-4 py-2 rounded-lg bg-white text-zinc-950 font-semibold text-sm hover:bg-zinc-100 transition-colors disabled:opacity-50">
+                {saving ? 'Salvando...' : editing ? 'Salvar alterações' : 'Criar conteúdo'}
+              </button>
+            </div>
           </div>
         </div>
       )}

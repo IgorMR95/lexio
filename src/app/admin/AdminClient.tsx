@@ -425,6 +425,7 @@ function PromptsTab({ areas, categorias, subcategorias }: { areas: Area[]; categ
       tags: Array.isArray(row.tags) ? row.tags.join(', ') : '',
       internacional: row.internacional ?? false,
       idioma: row.idioma ?? '',
+      destaque: row.destaque ?? false,
     })
   }
 
@@ -442,6 +443,7 @@ function PromptsTab({ areas, categorias, subcategorias }: { areas: Area[]; categ
       tags: editForm.tags.split(',').map((t: string) => t.trim()).filter(Boolean),
       internacional: editForm.internacional,
       idioma: editForm.internacional ? (editForm.idioma || null) : null,
+      destaque: editForm.destaque,
     }).eq('id', editing.id)
     setEditing(null)
     setSaving(false)
@@ -597,6 +599,18 @@ function PromptsTab({ areas, categorias, subcategorias }: { areas: Area[]; categ
                 </td>
                 <td className="px-4 py-3 text-right">
                   <div className="flex items-center justify-end gap-3">
+                    <button
+                      onClick={async () => {
+                        await (supabase as any).from('prompts').update({ destaque: !row.destaque }).eq('id', row.id)
+                        load(page, searchRef.current, filterStatusRef.current, filterInternacionalRef.current)
+                      }}
+                      title={row.destaque ? 'Remover destaque' : 'Marcar como destaque'}
+                      className={`text-xs transition-colors ${row.destaque ? 'text-yellow-400 hover:text-zinc-400' : 'text-zinc-600 hover:text-yellow-400'}`}
+                    >
+                      <svg className="w-4 h-4" fill={row.destaque ? 'currentColor' : 'none'} stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
+                      </svg>
+                    </button>
                     <button onClick={() => openEdit(row)} className="text-xs text-zinc-400 hover:text-white transition-colors">Editar</button>
                     <button onClick={() => handleDelete(row.id, row.titulo)} className="text-xs text-red-400/70 hover:text-red-400 transition-colors">Deletar</button>
                   </div>
@@ -684,6 +698,22 @@ function PromptsTab({ areas, categorias, subcategorias }: { areas: Area[]; categ
                 <input value={editForm.tags} onChange={e => setEditForm({ ...editForm, tags: e.target.value })}
                   className="w-full px-3 py-2 rounded-lg bg-zinc-800 border border-zinc-700 text-white text-sm focus:outline-none" />
               </div>
+              {/* Destaque */}
+              <div className="rounded-lg border border-zinc-700 p-4 bg-zinc-800/30">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-white font-medium">Selo Destaque</p>
+                    <p className="text-xs text-zinc-500 mt-0.5">Exibe badge e aparece na seção de destaques</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setEditForm({ ...editForm, destaque: !editForm.destaque })}
+                    className={`relative w-11 h-6 rounded-full transition-colors ${editForm.destaque ? 'bg-yellow-500' : 'bg-zinc-700'}`}>
+                    <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full transition-transform ${editForm.destaque ? 'translate-x-5' : 'translate-x-0'}`} />
+                  </button>
+                </div>
+              </div>
+
               {/* Internacional */}
               <div className="rounded-lg border border-zinc-700 p-4 space-y-3 bg-zinc-800/30">
                 <div className="flex items-center justify-between">
@@ -694,7 +724,7 @@ function PromptsTab({ areas, categorias, subcategorias }: { areas: Area[]; categ
                   <button
                     type="button"
                     onClick={() => setEditForm({ ...editForm, internacional: !editForm.internacional, idioma: !editForm.internacional ? '' : editForm.idioma })}
-                    className={`relative w-11 h-6 rounded-full transition-colors ${editForm.internacional ? 'bg-indigo-500' : 'bg-zinc-700'}`}>
+                    className={`relative w-11 h-6 rounded-full transition-colors ${editForm.internacional ? 'bg-teal-500' : 'bg-zinc-700'}`}>
                     <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full transition-transform ${editForm.internacional ? 'translate-x-5' : 'translate-x-0'}`} />
                   </button>
                 </div>

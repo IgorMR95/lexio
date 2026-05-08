@@ -142,6 +142,7 @@ export interface Database {
           visualizacoes: number
           internacional: boolean
           idioma: string | null
+          destaque: boolean
           created_at: string
           updated_at: string
         }
@@ -159,6 +160,7 @@ export interface Database {
           observacoes?: string | null
           internacional?: boolean
           idioma?: string | null
+          destaque?: boolean
         }
         Update: {
           titulo?: string
@@ -173,10 +175,42 @@ export interface Database {
           observacoes?: string | null
           internacional?: boolean
           idioma?: string | null
+          destaque?: boolean
+        }
+      }
+      prompt_votos: {
+        Row: {
+          id: string
+          prompt_id: string
+          user_id: string
+          created_at: string
+        }
+        Insert: {
+          prompt_id: string
+          user_id: string
+        }
+        Update: Record<string, never>
+      }
+    }
+    Views: {
+      prompt_votos_contagem: {
+        Row: { prompt_id: string; total_votos: number }
+      }
+      destaques_semana: {
+        Row: {
+          id: string
+          titulo: string
+          descricao_curta: string | null
+          tags: string[]
+          created_at: string
+          area_direito_id: string | null
+          subcategoria_id: string | null
+          categoria_id: string | null
+          votos_semana: number
+          score: number
         }
       }
     }
-    Views: Record<string, never>
     Functions: {
       is_admin: { Args: Record<string, never>; Returns: boolean }
     }

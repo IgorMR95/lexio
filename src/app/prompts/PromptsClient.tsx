@@ -266,6 +266,14 @@ function PromptCard({ prompt }: { prompt: PromptWithRelations }) {
         )}
 
         <div className="flex flex-wrap gap-1.5 mb-3">
+          {(prompt as any).destaque && (
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-yellow-500/10 text-yellow-400 text-xs border border-yellow-500/20 font-medium">
+              <svg className="w-2.5 h-2.5" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
+              </svg>
+              Destaque
+            </span>
+          )}
           {(prompt as any).areas_direito?.nome && (
             <span className="px-2 py-0.5 rounded-full bg-green-500/10 text-green-400 text-xs border border-green-500/20">
               {(prompt as any).areas_direito.nome}

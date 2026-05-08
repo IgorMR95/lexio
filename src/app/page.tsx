@@ -26,10 +26,17 @@ const featureIcons = {
 
 export default async function HomePage() {
   const supabase = createClient()
-  const { count } = await supabase
-    .from('prompts')
-    .select('*', { count: 'exact', head: true })
-    .in('status', ['ativo', 'aprovado'])
+
+  const [{ count }, { data: destaquesSemana }] = await Promise.all([
+    supabase
+      .from('prompts')
+      .select('*', { count: 'exact', head: true })
+      .in('status', ['ativo', 'aprovado']),
+    (supabase as any)
+      .from('destaques_semana')
+      .select('*, areas_direito(nome), subcategorias(nome)')
+      .limit(5),
+  ])
 
   const features = [
     { key: 'advogados', title: 'Para Advogados', desc: 'Petições, contratos, pareceres e estratégias jurídicas com prompts prontos.' },
@@ -81,6 +88,79 @@ export default async function HomePage() {
           </div>
         </div>
       </section>
+
+      {/* Destaques da Semana */}
+      {destaquesSemana && destaquesSemana.length > 0 && (
+        <section className="border-t border-zinc-800/50 bg-zinc-900/20">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+            <div className="flex items-center justify-between mb-8">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-lg bg-yellow-500/10 border border-yellow-500/20 flex items-center justify-center">
+                  <svg className="w-4 h-4 text-yellow-400" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
+                  </svg>
+                </div>
+                <div>
+                  <h2 className="text-xl font-bold text-white">Destaques da Semana</h2>
+                  <p className="text-xs text-zinc-500">Os prompts mais votados nos últimos 7 dias</p>
+                </div>
+              </div>
+              <Link href="/melhores" className="text-xs text-zinc-500 hover:text-green-400 transition-colors">
+                Ver todos →
+              </Link>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
+              {destaquesSemana.map((prompt: any, i: number) => (
+                <Link
+                  key={prompt.id}
+                  href={`/prompts/${prompt.id}`}
+                  className="group relative p-4 rounded-xl border border-zinc-800 bg-zinc-900/50 hover:border-yellow-500/30 hover:bg-zinc-900 transition-all"
+                >
+                  {/* Posição */}
+                  <div className={`absolute -top-2 -left-2 w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold border ${
+                    i === 0 ? 'bg-yellow-500 border-yellow-400 text-zinc-950' :
+                    i === 1 ? 'bg-zinc-400 border-zinc-300 text-zinc-950' :
+                    i === 2 ? 'bg-amber-700 border-amber-600 text-white' :
+                    'bg-zinc-800 border-zinc-700 text-zinc-400'
+                  }`}>
+                    {i + 1}
+                  </div>
+
+                  <h3 className="text-sm font-semibold text-white group-hover:text-yellow-300 transition-colors line-clamp-2 mb-2 pr-1">
+                    {prompt.titulo}
+                  </h3>
+
+                  {prompt.descricao_curta && (
+                    <p className="text-xs text-zinc-500 line-clamp-2 mb-3 leading-relaxed">
+                      {prompt.descricao_curta}
+                    </p>
+                  )}
+
+                  <div className="flex flex-wrap gap-1 mb-3">
+                    {prompt.areas_direito?.nome && (
+                      <span className="px-1.5 py-0.5 rounded-full bg-green-500/10 text-green-400 text-xs border border-green-500/20">
+                        {prompt.areas_direito.nome}
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="flex items-center justify-between mt-auto">
+                    <div className="flex items-center gap-1 text-xs text-zinc-500">
+                      <svg className="w-3 h-3 text-green-500" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M5 15l7-7 7 7" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" fill="none" />
+                      </svg>
+                      <span className="font-medium text-green-400">{prompt.votos_semana}</span>
+                      <span>votos</span>
+                    </div>
+                    <span className="text-xs text-zinc-600 group-hover:text-yellow-400 transition-colors">Ver →</span>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
 
       {/* Features */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20">

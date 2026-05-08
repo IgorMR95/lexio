@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { notFound } from 'next/navigation'
 import { CopyButton } from '@/components/ui/CopyButton'
+import { UpvoteButton } from '@/components/ui/UpvoteButton'
 import Link from 'next/link'
 
 export const dynamic = 'force-dynamic'
@@ -14,7 +15,6 @@ export default async function PromptPage({ params }: { params: { id: string } })
     ? (await supabase.from('profiles').select('role').eq('id', user.id).single()).data?.role === 'admin'
     : false
 
-  // Admin e dono podem ver qualquer status; outros apenas ativo/aprovado
   const query = supabase
     .from('prompts')
     .select(`*, categorias_principais(id, nome, slug), subcategorias(id, nome, slug), subniveis(id, nome, slug), areas_direito(id, nome, slug)`)
@@ -36,6 +36,28 @@ export default async function PromptPage({ params }: { params: { id: string } })
     ? (await supabase.from('profiles').select('full_name, email, bio, instituicao').eq('id', autorId).single()).data
     : null
 
+  // Contagem de votos
+  const { data: votosData } = await (supabase as any)
+    .from('prompt_votos_contagem')
+    .select('total_votos')
+    .eq('prompt_id', id)
+    .single()
+  const totalVotos: number = votosData?.total_votos ?? 0
+
+  // Verificar se o usuário atual já votou
+  let userVoted = false
+  if (user) {
+    const { data: votoUser } = await (supabase as any)
+      .from('prompt_votos')
+      .select('id')
+      .eq('prompt_id', id)
+      .eq('user_id', user.id)
+      .single()
+    userVoted = !!votoUser
+  }
+
+  const isDestaque = !!(prompt as any).destaque
+
   const statusMap: Record<string, { label: string; color: string }> = {
     pendente: { label: 'Aguardando aprovação', color: 'bg-amber-500/10 text-amber-400 border-amber-500/20' },
     inativo:  { label: 'Inativo',              color: 'bg-zinc-500/10 text-zinc-400 border-zinc-700' },
@@ -52,7 +74,6 @@ export default async function PromptPage({ params }: { params: { id: string } })
         </Link>
       </div>
 
-      {/* Banner de status para prompts não publicados */}
       {isPending && (isOwner || isAdmin) && (
         <div className="mb-6 flex items-center gap-3 p-4 rounded-xl border border-amber-500/20 bg-amber-500/5">
           <span className={`px-2.5 py-1 rounded-full text-xs border font-medium ${statusInfo?.color}`}>
@@ -69,7 +90,28 @@ export default async function PromptPage({ params }: { params: { id: string } })
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Conteúdo principal */}
         <div className="lg:col-span-2">
-          <h1 className="text-2xl font-bold text-white mb-3">{(prompt as any).titulo}</h1>
+          {/* Título + upvote */}
+          <div className="flex items-start gap-4 mb-3">
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 flex-wrap mb-2">
+                {isDestaque && (
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-yellow-500/10 text-yellow-400 text-xs border border-yellow-500/20 font-medium">
+                    <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 24 24">
+                      <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
+                    </svg>
+                    Destaque
+                  </span>
+                )}
+              </div>
+              <h1 className="text-2xl font-bold text-white">{(prompt as any).titulo}</h1>
+            </div>
+            <UpvoteButton
+              promptId={id}
+              initialCount={totalVotos}
+              initialVoted={userVoted}
+              userId={user?.id ?? null}
+            />
+          </div>
 
           {(prompt as any).descricao_curta && (
             <p className="text-zinc-400 mb-6 leading-relaxed">{(prompt as any).descricao_curta}</p>
@@ -121,7 +163,7 @@ export default async function PromptPage({ params }: { params: { id: string } })
               {(prompt as any).areas_direito && (
                 <div>
                   <dt className="text-xs text-zinc-600">Área do Direito</dt>
-                  <dd className="text-sm text-blue-400">{(prompt as any).areas_direito.nome}</dd>
+                  <dd className="text-sm text-green-400">{(prompt as any).areas_direito.nome}</dd>
                 </div>
               )}
             </dl>
@@ -140,7 +182,7 @@ export default async function PromptPage({ params }: { params: { id: string } })
                 <div>
                   <dt className="text-xs text-zinc-600">Origem</dt>
                   <dd className="text-sm">
-                    <span className="px-2 py-0.5 rounded-full bg-indigo-500/10 text-indigo-400 text-xs border border-indigo-500/20">
+                    <span className="px-2 py-0.5 rounded-full bg-teal-500/10 text-teal-400 text-xs border border-teal-500/20">
                       Internacional{(prompt as any).idioma ? ` · ${(prompt as any).idioma.toUpperCase()}` : ''}
                     </span>
                   </dd>
@@ -165,7 +207,7 @@ export default async function PromptPage({ params }: { params: { id: string } })
                   {(autorProfile.full_name ?? autorProfile.email ?? '?')[0]?.toUpperCase()}
                 </div>
                 <div className="min-w-0">
-                  <p className="text-sm text-white font-medium group-hover:text-blue-300 transition-colors">
+                  <p className="text-sm text-white font-medium group-hover:text-green-300 transition-colors">
                     {autorProfile.full_name ?? autorProfile.email}
                   </p>
                   {autorProfile.instituicao && (
@@ -174,7 +216,7 @@ export default async function PromptPage({ params }: { params: { id: string } })
                   {autorProfile.bio && (
                     <p className="text-xs text-zinc-600 mt-1 line-clamp-2">{autorProfile.bio}</p>
                   )}
-                  <p className="text-xs text-zinc-600 mt-1 group-hover:text-blue-400 transition-colors">Ver perfil →</p>
+                  <p className="text-xs text-zinc-600 mt-1 group-hover:text-green-400 transition-colors">Ver perfil →</p>
                 </div>
               </Link>
             </div>

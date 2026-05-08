@@ -150,12 +150,12 @@ export default async function PromptPage({ params }: { params: { id: string } })
           {autorProfile && (
             <div className="p-4 rounded-xl border border-zinc-800 bg-zinc-900/50">
               <h3 className="text-xs font-semibold text-zinc-400 uppercase tracking-wider mb-3">Autor</h3>
-              <div className="flex items-start gap-3">
-                <div className="w-9 h-9 rounded-full bg-zinc-800 border border-zinc-700 flex items-center justify-center font-bold text-white text-sm flex-shrink-0">
+              <Link href={`/u/${autorId}`} className="flex items-start gap-3 group">
+                <div className="w-9 h-9 rounded-full bg-zinc-800 border border-zinc-700 flex items-center justify-center font-bold text-white text-sm flex-shrink-0 group-hover:border-zinc-500 transition-colors">
                   {(autorProfile.full_name ?? autorProfile.email ?? '?')[0]?.toUpperCase()}
                 </div>
                 <div className="min-w-0">
-                  <p className="text-sm text-white font-medium">
+                  <p className="text-sm text-white font-medium group-hover:text-blue-300 transition-colors">
                     {autorProfile.full_name ?? autorProfile.email}
                   </p>
                   {autorProfile.instituicao && (
@@ -164,8 +164,9 @@ export default async function PromptPage({ params }: { params: { id: string } })
                   {autorProfile.bio && (
                     <p className="text-xs text-zinc-600 mt-1 line-clamp-2">{autorProfile.bio}</p>
                   )}
+                  <p className="text-xs text-zinc-600 mt-1 group-hover:text-blue-400 transition-colors">Ver perfil →</p>
                 </div>
-              </div>
+              </Link>
             </div>
           )}
 

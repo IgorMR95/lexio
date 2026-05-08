@@ -337,12 +337,17 @@ function PromptCard({ prompt }: { prompt: PromptWithRelations }) {
           </div>
         )}
 
-        <div className="mt-3 pt-3 border-t border-zinc-800/50 flex items-center justify-between">
-          <span className="text-xs text-zinc-600">
-            {new Date(prompt.created_at).toLocaleDateString('pt-BR')}
-          </span>
-          <span className="text-xs text-zinc-500 group-hover:text-green-400 transition-colors">
-            Ver prompt →
+        <div className="mt-3 pt-3 border-t border-zinc-800/50 flex items-center justify-between gap-2">
+          <div className="flex items-center gap-1.5 min-w-0">
+            <div className="w-4 h-4 rounded-full bg-zinc-700 flex items-center justify-center text-zinc-400 text-xs flex-shrink-0 font-bold">
+              {((prompt as any).profiles?.full_name ?? (prompt as any).profiles?.email ?? '?')[0]?.toUpperCase()}
+            </div>
+            <span className="text-xs text-zinc-500 truncate">
+              {(prompt as any).profiles?.full_name ?? (prompt as any).profiles?.email ?? 'Anônimo'}
+            </span>
+          </div>
+          <span className="text-xs text-zinc-500 group-hover:text-green-400 transition-colors flex-shrink-0">
+            Ver →
           </span>
         </div>
       </div>

@@ -22,7 +22,7 @@ export default async function PromptsPage() {
     supabase.from('areas_direito').select('*').eq('ativo', true).order('ordem'),
     supabase
       .from('prompts')
-      .select(`*, categorias_principais(id, nome, slug), subcategorias(id, nome, slug), subniveis(id, nome, slug), areas_direito(id, nome, slug)`)
+      .select(`*, categorias_principais(id, nome, slug), subcategorias(id, nome, slug), subniveis(id, nome, slug), areas_direito(id, nome, slug), profiles(full_name, email)`)
       .in('status', ['ativo', 'aprovado'])
       .order('created_at', { ascending: false }),
     (supabase as any)

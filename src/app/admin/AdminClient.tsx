@@ -27,6 +27,7 @@ const TABS = [
   { id: 'usuarios', label: 'Usuários' },
   { id: 'estrutura', label: 'Estrutura' },
   { id: 'areas', label: 'Áreas' },
+  { id: 'grupos', label: 'Grupos' },
   { id: 'auditoria', label: 'Auditoria' },
 ]
 
@@ -110,6 +111,7 @@ export function AdminClient({ currentUserId, profiles: initialProfiles, auditLog
           setAreas(data ?? [])
         }} />
       )}
+      {activeTab === 'grupos' && <GruposAdminTab />}
       {activeTab === 'auditoria' && <AuditoriaTab logs={auditLogs} />}
     </div>
   )
@@ -122,6 +124,7 @@ function RevisaoTab({ onCountChange }: { onCountChange: (n: number) => void }) {
   const [prompts, setPrompts] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [expanded, setExpanded] = useState<string | null>(null)
+  const [detalhes, setDetalhes] = useState<any | null>(null)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -201,9 +204,9 @@ function RevisaoTab({ onCountChange }: { onCountChange: (n: number) => void }) {
               {p.descricao_curta && <p className="text-xs text-zinc-500 mt-1 italic">{p.descricao_curta}</p>}
             </div>
             <div className="flex items-center gap-2 flex-shrink-0 flex-wrap justify-end">
-              <button onClick={() => setExpanded(expanded === p.id ? null : p.id)}
+              <button onClick={() => setDetalhes(p)}
                 className="text-xs text-zinc-500 hover:text-white transition-colors px-2 py-1 rounded border border-zinc-800 hover:border-zinc-600">
-                {expanded === p.id ? 'Fechar' : 'Ver texto'}
+                Ver detalhes
               </button>
               <button onClick={() => aprovar(p.id)}
                 className="text-xs px-3 py-1.5 rounded-lg bg-green-500/10 text-green-400 border border-green-500/20 hover:bg-green-500/20 transition-colors font-medium">
@@ -219,20 +222,70 @@ function RevisaoTab({ onCountChange }: { onCountChange: (n: number) => void }) {
               </button>
             </div>
           </div>
-          {expanded === p.id && (
-            <div className="px-4 pb-4">
-              <pre className="whitespace-pre-wrap text-xs text-zinc-300 bg-zinc-950 rounded-lg p-4 border border-zinc-800 font-mono leading-relaxed max-h-60 overflow-y-auto">
-                {p.texto_completo}
-              </pre>
-              {p.observacoes && (
-                <p className="text-xs text-amber-400 mt-2 bg-amber-500/5 border border-amber-500/10 rounded px-3 py-2">
-                  Obs. do autor: {p.observacoes}
+        </div>
+      ))}
+
+      {/* Modal de detalhes do prompt */}
+      {detalhes && (
+        <div className="fixed inset-0 bg-black/70 z-50 flex items-start justify-center p-4 overflow-y-auto">
+          <div className="bg-zinc-900 rounded-xl border border-zinc-700 w-full max-w-3xl my-4">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-zinc-800">
+              <div>
+                <h3 className="text-white font-semibold">{detalhes.titulo}</h3>
+                <p className="text-xs text-zinc-500 mt-0.5">
+                  por {detalhes.autorProfile?.full_name ?? detalhes.autorProfile?.email ?? '—'} · {new Date(detalhes.created_at).toLocaleDateString('pt-BR')}
+                </p>
+              </div>
+              <button onClick={() => setDetalhes(null)} className="text-zinc-500 hover:text-white text-2xl leading-none ml-4">×</button>
+            </div>
+            <div className="p-6 space-y-4">
+              {detalhes.descricao_curta && (
+                <p className="text-sm text-zinc-400 italic">{detalhes.descricao_curta}</p>
+              )}
+              <div className="flex flex-wrap gap-2">
+                {detalhes.areas_direito?.nome && (
+                  <span className="px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-400 text-xs border border-blue-500/20">{detalhes.areas_direito.nome}</span>
+                )}
+                {detalhes.categorias_principais?.nome && (
+                  <span className="px-2 py-0.5 rounded-full bg-zinc-800 text-zinc-400 text-xs">{detalhes.categorias_principais.nome}</span>
+                )}
+                {detalhes.internacional && (
+                  <span className="px-2 py-0.5 rounded-full bg-indigo-500/10 text-indigo-400 text-xs border border-indigo-500/20">
+                    Internacional{detalhes.idioma ? ` · ${detalhes.idioma.toUpperCase()}` : ''}
+                  </span>
+                )}
+                {detalhes.tags?.map((t: string) => (
+                  <span key={t} className="text-xs text-zinc-600">#{t}</span>
+                ))}
+              </div>
+              <div className="bg-zinc-950 rounded-xl border border-zinc-800 p-5">
+                <pre className="whitespace-pre-wrap text-sm text-zinc-300 leading-relaxed font-sans">
+                  {detalhes.texto_completo}
+                </pre>
+              </div>
+              {detalhes.observacoes && (
+                <p className="text-xs text-amber-400 bg-amber-500/5 border border-amber-500/10 rounded px-3 py-2">
+                  Obs. do autor: {detalhes.observacoes}
                 </p>
               )}
             </div>
-          )}
+            <div className="px-6 py-4 border-t border-zinc-800 flex gap-3 justify-end">
+              <button onClick={() => { rejeitar(detalhes.id); setDetalhes(null) }}
+                className="px-4 py-2 rounded-lg bg-red-500/10 text-red-400 border border-red-500/20 text-sm hover:bg-red-500/20 transition-colors">
+                Rejeitar
+              </button>
+              <button onClick={() => { marcarAtivo(detalhes.id); setDetalhes(null) }}
+                className="px-4 py-2 rounded-lg bg-blue-500/10 text-blue-400 border border-blue-500/20 text-sm hover:bg-blue-500/20 transition-colors font-medium">
+                Ativar
+              </button>
+              <button onClick={() => { aprovar(detalhes.id); setDetalhes(null) }}
+                className="px-4 py-2 rounded-lg bg-green-500/10 text-green-400 border border-green-500/20 text-sm hover:bg-green-500/20 transition-colors font-medium">
+                Aprovar
+              </button>
+            </div>
+          </div>
         </div>
-      ))}
+      )}
     </div>
   )
 }
@@ -891,6 +944,8 @@ function EstruturaTab({ categorias, subcategorias, subniveis, onReload }: { cate
   const [newSubForCat, setNewSubForCat] = useState('')
   const [newNivelName, setNewNivelName] = useState('')
   const [newNivelForSub, setNewNivelForSub] = useState('')
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const [editingName, setEditingName] = useState('')
 
   const addCategoria = async () => {
     if (!newCatName.trim()) return
@@ -919,6 +974,12 @@ function EstruturaTab({ categorias, subcategorias, subniveis, onReload }: { cate
     if (!confirm(`Remover "${label}"?`)) return
     await (supabase as any).from(table).delete().eq('id', id); onReload()
   }
+  const startEdit = (id: string, nome: string) => { setEditingId(id); setEditingName(nome) }
+  const saveEdit = async (table: string) => {
+    if (!editingName.trim() || !editingId) return
+    await (supabase as any).from(table).update({ nome: editingName.trim() }).eq('id', editingId)
+    setEditingId(null); setEditingName(''); onReload()
+  }
 
   return (
     <div className="space-y-4">
@@ -933,20 +994,35 @@ function EstruturaTab({ categorias, subcategorias, subniveis, onReload }: { cate
         return (
           <div key={cat.id} className="rounded-xl border border-zinc-800 overflow-hidden">
             <div className="flex items-center justify-between px-4 py-3 bg-zinc-900/50 cursor-pointer hover:bg-zinc-900"
-              onClick={() => setExpandedCat(expandedCat === cat.id ? null : cat.id)}>
-              <div className="flex items-center gap-3">
-                <span className="text-white font-medium text-sm">{cat.nome}</span>
-                <span className="text-xs text-zinc-600">{catSubs.length} subcategorias</span>
-                {!cat.ativo && <span className="text-xs text-zinc-600 bg-zinc-800 px-1.5 py-0.5 rounded">inativo</span>}
+              onClick={() => editingId !== cat.id && setExpandedCat(expandedCat === cat.id ? null : cat.id)}>
+              <div className="flex items-center gap-3 flex-1 min-w-0">
+                {editingId === cat.id ? (
+                  <div className="flex items-center gap-2 flex-1" onClick={e => e.stopPropagation()}>
+                    <input autoFocus value={editingName} onChange={e => setEditingName(e.target.value)}
+                      onKeyDown={e => { if (e.key === 'Enter') saveEdit('categorias_principais'); if (e.key === 'Escape') { setEditingId(null); setEditingName('') } }}
+                      className="flex-1 px-2 py-1 rounded bg-zinc-800 border border-zinc-600 text-white text-sm focus:outline-none focus:border-zinc-400" />
+                    <button onClick={() => saveEdit('categorias_principais')} className="text-xs text-green-400 hover:text-green-300 transition-colors">Salvar</button>
+                    <button onClick={() => { setEditingId(null); setEditingName('') }} className="text-xs text-zinc-500 hover:text-white transition-colors">Cancelar</button>
+                  </div>
+                ) : (
+                  <>
+                    <span className="text-white font-medium text-sm">{cat.nome}</span>
+                    <span className="text-xs text-zinc-600">{catSubs.length} subcategorias</span>
+                    {!cat.ativo && <span className="text-xs text-zinc-600 bg-zinc-800 px-1.5 py-0.5 rounded">inativo</span>}
+                  </>
+                )}
               </div>
-              <div className="flex items-center gap-3" onClick={e => e.stopPropagation()}>
-                <button onClick={() => toggleAtivo('categorias_principais', cat.id, cat.ativo)}
-                  className={`text-xs transition-colors ${cat.ativo ? 'text-zinc-500 hover:text-amber-400' : 'text-zinc-600 hover:text-green-400'}`}>
-                  {cat.ativo ? 'Desativar' : 'Ativar'}
-                </button>
-                <button onClick={() => deleteItem('categorias_principais', cat.id, cat.nome)} className="text-xs text-red-400/60 hover:text-red-400 transition-colors">Remover</button>
-                <span className="text-zinc-600">{expandedCat === cat.id ? '▲' : '▼'}</span>
-              </div>
+              {editingId !== cat.id && (
+                <div className="flex items-center gap-3" onClick={e => e.stopPropagation()}>
+                  <button onClick={() => startEdit(cat.id, cat.nome)} className="text-xs text-zinc-500 hover:text-white transition-colors">Editar</button>
+                  <button onClick={() => toggleAtivo('categorias_principais', cat.id, cat.ativo)}
+                    className={`text-xs transition-colors ${cat.ativo ? 'text-zinc-500 hover:text-amber-400' : 'text-zinc-600 hover:text-green-400'}`}>
+                    {cat.ativo ? 'Desativar' : 'Ativar'}
+                  </button>
+                  <button onClick={() => deleteItem('categorias_principais', cat.id, cat.nome)} className="text-xs text-red-400/60 hover:text-red-400 transition-colors">Remover</button>
+                  <span className="text-zinc-600">{expandedCat === cat.id ? '▲' : '▼'}</span>
+                </div>
+              )}
             </div>
             {expandedCat === cat.id && (
               <div className="border-t border-zinc-800 divide-y divide-zinc-800/50">
@@ -955,22 +1031,54 @@ function EstruturaTab({ categorias, subcategorias, subniveis, onReload }: { cate
                   return (
                     <div key={sub.id}>
                       <div className="flex items-center justify-between px-6 py-2.5 hover:bg-zinc-900/20 cursor-pointer"
-                        onClick={() => setExpandedSub(expandedSub === sub.id ? null : sub.id)}>
-                        <div className="flex items-center gap-3">
-                          <span className="text-zinc-300 text-sm">↳ {sub.nome}</span>
-                          <span className="text-xs text-zinc-600">{subNiveis.length} subníveis</span>
+                        onClick={() => editingId !== sub.id && setExpandedSub(expandedSub === sub.id ? null : sub.id)}>
+                        <div className="flex items-center gap-3 flex-1 min-w-0">
+                          {editingId === sub.id ? (
+                            <div className="flex items-center gap-2 flex-1" onClick={e => e.stopPropagation()}>
+                              <span className="text-zinc-600 text-sm">↳</span>
+                              <input autoFocus value={editingName} onChange={e => setEditingName(e.target.value)}
+                                onKeyDown={e => { if (e.key === 'Enter') saveEdit('subcategorias'); if (e.key === 'Escape') { setEditingId(null); setEditingName('') } }}
+                                className="flex-1 px-2 py-1 rounded bg-zinc-800 border border-zinc-600 text-white text-sm focus:outline-none focus:border-zinc-400" />
+                              <button onClick={() => saveEdit('subcategorias')} className="text-xs text-green-400 hover:text-green-300 transition-colors">Salvar</button>
+                              <button onClick={() => { setEditingId(null); setEditingName('') }} className="text-xs text-zinc-500 hover:text-white transition-colors">Cancelar</button>
+                            </div>
+                          ) : (
+                            <>
+                              <span className="text-zinc-300 text-sm">↳ {sub.nome}</span>
+                              <span className="text-xs text-zinc-600">{subNiveis.length} subníveis</span>
+                            </>
+                          )}
                         </div>
-                        <div className="flex items-center gap-3" onClick={e => e.stopPropagation()}>
-                          <button onClick={() => deleteItem('subcategorias', sub.id, sub.nome)} className="text-xs text-red-400/60 hover:text-red-400 transition-colors">Remover</button>
-                          <span className="text-zinc-600 text-xs">{expandedSub === sub.id ? '▲' : '▼'}</span>
-                        </div>
+                        {editingId !== sub.id && (
+                          <div className="flex items-center gap-3" onClick={e => e.stopPropagation()}>
+                            <button onClick={() => startEdit(sub.id, sub.nome)} className="text-xs text-zinc-500 hover:text-white transition-colors">Editar</button>
+                            <button onClick={() => deleteItem('subcategorias', sub.id, sub.nome)} className="text-xs text-red-400/60 hover:text-red-400 transition-colors">Remover</button>
+                            <span className="text-zinc-600 text-xs">{expandedSub === sub.id ? '▲' : '▼'}</span>
+                          </div>
+                        )}
                       </div>
                       {expandedSub === sub.id && (
                         <div className="px-10 py-2 bg-zinc-950/30 space-y-1">
                           {subNiveis.map(n => (
                             <div key={n.id} className="flex items-center justify-between py-1">
-                              <span className="text-zinc-400 text-xs">↳ {n.nome}</span>
-                              <button onClick={() => deleteItem('subniveis', n.id, n.nome)} className="text-xs text-red-400/60 hover:text-red-400 transition-colors">Remover</button>
+                              {editingId === n.id ? (
+                                <div className="flex items-center gap-2 flex-1">
+                                  <span className="text-zinc-600 text-xs">↳</span>
+                                  <input autoFocus value={editingName} onChange={e => setEditingName(e.target.value)}
+                                    onKeyDown={e => { if (e.key === 'Enter') saveEdit('subniveis'); if (e.key === 'Escape') { setEditingId(null); setEditingName('') } }}
+                                    className="flex-1 px-2 py-0.5 rounded bg-zinc-900 border border-zinc-600 text-white text-xs focus:outline-none focus:border-zinc-400" />
+                                  <button onClick={() => saveEdit('subniveis')} className="text-xs text-green-400 hover:text-green-300 transition-colors">Salvar</button>
+                                  <button onClick={() => { setEditingId(null); setEditingName('') }} className="text-xs text-zinc-500 hover:text-white transition-colors">Cancelar</button>
+                                </div>
+                              ) : (
+                                <>
+                                  <span className="text-zinc-400 text-xs">↳ {n.nome}</span>
+                                  <div className="flex items-center gap-3">
+                                    <button onClick={() => startEdit(n.id, n.nome)} className="text-xs text-zinc-600 hover:text-white transition-colors">Editar</button>
+                                    <button onClick={() => deleteItem('subniveis', n.id, n.nome)} className="text-xs text-red-400/60 hover:text-red-400 transition-colors">Remover</button>
+                                  </div>
+                                </>
+                              )}
                             </div>
                           ))}
                           <div className="flex gap-2 pt-2">
@@ -1008,6 +1116,8 @@ function EstruturaTab({ categorias, subcategorias, subniveis, onReload }: { cate
 function AreasTab({ areas, onReload }: { areas: Area[]; onReload: () => void }) {
   const supabase = createClient()
   const [newName, setNewName] = useState('')
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const [editingName, setEditingName] = useState('')
 
   const addArea = async () => {
     if (!newName.trim()) return
@@ -1021,6 +1131,11 @@ function AreasTab({ areas, onReload }: { areas: Area[]; onReload: () => void }) 
   const deleteArea = async (id: string, nome: string) => {
     if (!confirm(`Remover "${nome}"?`)) return
     await (supabase as any).from('areas_direito').delete().eq('id', id); onReload()
+  }
+  const saveEdit = async () => {
+    if (!editingName.trim() || !editingId) return
+    await (supabase as any).from('areas_direito').update({ nome: editingName.trim() }).eq('id', editingId)
+    setEditingId(null); setEditingName(''); onReload()
   }
 
   return (
@@ -1043,20 +1158,35 @@ function AreasTab({ areas, onReload }: { areas: Area[]; onReload: () => void }) 
           <tbody className="divide-y divide-zinc-800/50">
             {areas.map(a => (
               <tr key={a.id} className="hover:bg-zinc-900/30 transition-colors">
-                <td className="px-4 py-3 text-white text-sm">{a.nome}</td>
+                <td className="px-4 py-3">
+                  {editingId === a.id ? (
+                    <div className="flex items-center gap-2">
+                      <input autoFocus value={editingName} onChange={e => setEditingName(e.target.value)}
+                        onKeyDown={e => { if (e.key === 'Enter') saveEdit(); if (e.key === 'Escape') { setEditingId(null); setEditingName('') } }}
+                        className="flex-1 px-2 py-1 rounded bg-zinc-800 border border-zinc-600 text-white text-sm focus:outline-none focus:border-zinc-400" />
+                      <button onClick={saveEdit} className="text-xs text-green-400 hover:text-green-300 transition-colors">Salvar</button>
+                      <button onClick={() => { setEditingId(null); setEditingName('') }} className="text-xs text-zinc-500 hover:text-white transition-colors">Cancelar</button>
+                    </div>
+                  ) : (
+                    <span className="text-white text-sm">{a.nome}</span>
+                  )}
+                </td>
                 <td className="px-4 py-3">
                   <span className={`px-2 py-0.5 rounded-full text-xs border ${a.ativo ? 'bg-green-500/10 text-green-400 border-green-500/20' : 'bg-zinc-800 text-zinc-500 border-zinc-700'}`}>
                     {a.ativo ? 'ativa' : 'inativa'}
                   </span>
                 </td>
                 <td className="px-4 py-3 text-right">
-                  <div className="flex items-center justify-end gap-3">
-                    <button onClick={() => toggleAtivo(a.id, a.ativo)}
-                      className={`text-xs transition-colors ${a.ativo ? 'text-zinc-500 hover:text-amber-400' : 'text-zinc-600 hover:text-green-400'}`}>
-                      {a.ativo ? 'Desativar' : 'Ativar'}
-                    </button>
-                    <button onClick={() => deleteArea(a.id, a.nome)} className="text-xs text-red-400/60 hover:text-red-400 transition-colors">Remover</button>
-                  </div>
+                  {editingId !== a.id && (
+                    <div className="flex items-center justify-end gap-3">
+                      <button onClick={() => { setEditingId(a.id); setEditingName(a.nome) }} className="text-xs text-zinc-400 hover:text-white transition-colors">Editar</button>
+                      <button onClick={() => toggleAtivo(a.id, a.ativo)}
+                        className={`text-xs transition-colors ${a.ativo ? 'text-zinc-500 hover:text-amber-400' : 'text-zinc-600 hover:text-green-400'}`}>
+                        {a.ativo ? 'Desativar' : 'Ativar'}
+                      </button>
+                      <button onClick={() => deleteArea(a.id, a.nome)} className="text-xs text-red-400/60 hover:text-red-400 transition-colors">Remover</button>
+                    </div>
+                  )}
                 </td>
               </tr>
             ))}
@@ -1064,6 +1194,219 @@ function AreasTab({ areas, onReload }: { areas: Area[]; onReload: () => void }) 
           </tbody>
         </table>
       </div>
+    </div>
+  )
+}
+
+// ── Grupos Admin ──────────────────────────────────────────────────────────────
+
+interface Grupo { id: string; nome: string; descricao: string | null; tipo: string; criado_por: string | null; created_at: string; _membros?: number }
+
+function GruposAdminTab() {
+  const supabase = createClient()
+  const [grupos, setGrupos] = useState<Grupo[]>([])
+  const [loading, setLoading] = useState(true)
+  const [editing, setEditing] = useState<Grupo | null>(null)
+  const [editForm, setEditForm] = useState({ nome: '', descricao: '', tipo: 'publico' })
+  const [saving, setSaving] = useState(false)
+  const [showCreate, setShowCreate] = useState(false)
+  const [createForm, setCreateForm] = useState({ nome: '', descricao: '', tipo: 'publico' })
+  const [creating, setCreating] = useState(false)
+
+  const load = useCallback(async () => {
+    setLoading(true)
+    const { data } = await (supabase as any)
+      .from('grupos')
+      .select('*, grupo_membros(count)')
+      .order('created_at', { ascending: false })
+    if (data) {
+      setGrupos(data.map((g: any) => ({
+        ...g,
+        _membros: g.grupo_membros?.[0]?.count ?? 0,
+      })))
+    }
+    setLoading(false)
+  }, [])
+
+  useEffect(() => { load() }, [load])
+
+  const openEdit = (g: Grupo) => {
+    setEditing(g)
+    setEditForm({ nome: g.nome, descricao: g.descricao ?? '', tipo: g.tipo })
+  }
+
+  const saveEdit = async () => {
+    if (!editing) return
+    setSaving(true)
+    await (supabase as any).from('grupos').update({
+      nome: editForm.nome.trim(),
+      descricao: editForm.descricao.trim() || null,
+      tipo: editForm.tipo,
+    }).eq('id', editing.id)
+    setEditing(null)
+    setSaving(false)
+    load()
+  }
+
+  const handleCreate = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setCreating(true)
+    await (supabase as any).from('grupos').insert({
+      nome: createForm.nome.trim(),
+      descricao: createForm.descricao.trim() || null,
+      tipo: createForm.tipo,
+    })
+    setShowCreate(false)
+    setCreateForm({ nome: '', descricao: '', tipo: 'publico' })
+    setCreating(false)
+    load()
+  }
+
+  const handleDelete = async (g: Grupo) => {
+    if (!confirm(`Excluir o grupo "${g.nome}"? Os membros serão removidos também.`)) return
+    await (supabase as any).from('grupo_membros').delete().eq('grupo_id', g.id)
+    await (supabase as any).from('grupos').delete().eq('id', g.id)
+    load()
+  }
+
+  if (loading) return <div className="text-center py-16 text-zinc-500 text-sm">Carregando...</div>
+
+  return (
+    <div className="space-y-4">
+      <div className="flex justify-end">
+        <button onClick={() => setShowCreate(true)}
+          className="px-4 py-2 rounded-lg bg-white text-zinc-950 font-semibold text-sm hover:bg-zinc-100 transition-colors">
+          + Criar grupo
+        </button>
+      </div>
+
+      {grupos.length === 0 ? (
+        <div className="text-center py-16 border border-dashed border-zinc-800 rounded-xl">
+          <p className="text-zinc-400 font-medium">Nenhum grupo criado</p>
+        </div>
+      ) : (
+        <div className="rounded-xl border border-zinc-800 overflow-hidden">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="bg-zinc-900/50 border-b border-zinc-800">
+                <th className="text-left px-4 py-3 text-xs font-medium text-zinc-500">Nome</th>
+                <th className="text-left px-4 py-3 text-xs font-medium text-zinc-500 hidden md:table-cell">Descrição</th>
+                <th className="text-left px-4 py-3 text-xs font-medium text-zinc-500">Tipo</th>
+                <th className="text-left px-4 py-3 text-xs font-medium text-zinc-500 hidden lg:table-cell">Membros</th>
+                <th className="text-left px-4 py-3 text-xs font-medium text-zinc-500 hidden lg:table-cell">Criado em</th>
+                <th className="text-right px-4 py-3 text-xs font-medium text-zinc-500">Ações</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-zinc-800/50">
+              {grupos.map(g => (
+                <tr key={g.id} className="hover:bg-zinc-900/30 transition-colors">
+                  <td className="px-4 py-3">
+                    <p className="text-white font-medium text-sm">{g.nome}</p>
+                  </td>
+                  <td className="px-4 py-3 hidden md:table-cell">
+                    <p className="text-zinc-500 text-xs line-clamp-1">{g.descricao ?? '—'}</p>
+                  </td>
+                  <td className="px-4 py-3">
+                    <span className={`px-2 py-0.5 rounded-full text-xs border ${g.tipo === 'publico' ? 'bg-green-500/10 text-green-400 border-green-500/20' : g.tipo === 'privado' ? 'bg-zinc-800 text-zinc-400 border-zinc-700' : 'bg-indigo-500/10 text-indigo-400 border-indigo-500/20'}`}>
+                      {g.tipo}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3 text-zinc-500 text-xs hidden lg:table-cell">{g._membros}</td>
+                  <td className="px-4 py-3 text-zinc-600 text-xs hidden lg:table-cell">{new Date(g.created_at).toLocaleDateString('pt-BR')}</td>
+                  <td className="px-4 py-3 text-right">
+                    <div className="flex items-center justify-end gap-3">
+                      <button onClick={() => openEdit(g)} className="text-xs text-zinc-400 hover:text-white transition-colors">Editar</button>
+                      <button onClick={() => handleDelete(g)} className="text-xs text-red-400/70 hover:text-red-400 transition-colors">Excluir</button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {/* Modal editar grupo */}
+      {editing && (
+        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
+          <div className="bg-zinc-900 rounded-xl border border-zinc-700 w-full max-w-sm">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-zinc-800">
+              <h3 className="text-white font-semibold">Editar grupo</h3>
+              <button onClick={() => setEditing(null)} className="text-zinc-500 hover:text-white text-xl leading-none">×</button>
+            </div>
+            <div className="p-6 space-y-4">
+              <div>
+                <label className="block text-xs text-zinc-400 mb-1.5">Nome</label>
+                <input value={editForm.nome} onChange={e => setEditForm({ ...editForm, nome: e.target.value })}
+                  className="w-full px-3 py-2 rounded-lg bg-zinc-800 border border-zinc-700 text-white text-sm focus:outline-none" />
+              </div>
+              <div>
+                <label className="block text-xs text-zinc-400 mb-1.5">Descrição</label>
+                <textarea rows={3} value={editForm.descricao} onChange={e => setEditForm({ ...editForm, descricao: e.target.value })}
+                  className="w-full px-3 py-2 rounded-lg bg-zinc-800 border border-zinc-700 text-white text-sm focus:outline-none resize-none" />
+              </div>
+              <div>
+                <label className="block text-xs text-zinc-400 mb-1.5">Visibilidade</label>
+                <select value={editForm.tipo} onChange={e => setEditForm({ ...editForm, tipo: e.target.value })}
+                  className="w-full px-3 py-2 rounded-lg bg-zinc-800 border border-zinc-700 text-zinc-300 text-sm focus:outline-none">
+                  <option value="publico">Público</option>
+                  <option value="privado">Privado</option>
+                  <option value="fechado">Fechado</option>
+                </select>
+              </div>
+            </div>
+            <div className="px-6 py-4 border-t border-zinc-800 flex gap-3 justify-end">
+              <button onClick={() => setEditing(null)} className="px-4 py-2 text-sm text-zinc-400 hover:text-white transition-colors">Cancelar</button>
+              <button onClick={saveEdit} disabled={saving}
+                className="px-4 py-2 rounded-lg bg-white text-zinc-950 font-semibold text-sm hover:bg-zinc-100 transition-colors disabled:opacity-50">
+                {saving ? 'Salvando...' : 'Salvar'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal criar grupo */}
+      {showCreate && (
+        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
+          <div className="bg-zinc-900 rounded-xl border border-zinc-700 w-full max-w-sm">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-zinc-800">
+              <h3 className="text-white font-semibold">Criar grupo</h3>
+              <button onClick={() => setShowCreate(false)} className="text-zinc-500 hover:text-white text-xl leading-none">×</button>
+            </div>
+            <form onSubmit={handleCreate} className="p-6 space-y-4">
+              <div>
+                <label className="block text-xs text-zinc-400 mb-1.5">Nome</label>
+                <input required value={createForm.nome} onChange={e => setCreateForm({ ...createForm, nome: e.target.value })}
+                  className="w-full px-3 py-2 rounded-lg bg-zinc-800 border border-zinc-700 text-white text-sm focus:outline-none"
+                  placeholder="Nome do grupo" />
+              </div>
+              <div>
+                <label className="block text-xs text-zinc-400 mb-1.5">Descrição</label>
+                <textarea rows={3} value={createForm.descricao} onChange={e => setCreateForm({ ...createForm, descricao: e.target.value })}
+                  className="w-full px-3 py-2 rounded-lg bg-zinc-800 border border-zinc-700 text-white text-sm focus:outline-none resize-none"
+                  placeholder="Descrição do grupo (opcional)" />
+              </div>
+              <div>
+                <label className="block text-xs text-zinc-400 mb-1.5">Visibilidade</label>
+                <select value={createForm.tipo} onChange={e => setCreateForm({ ...createForm, tipo: e.target.value })}
+                  className="w-full px-3 py-2 rounded-lg bg-zinc-800 border border-zinc-700 text-zinc-300 text-sm focus:outline-none">
+                  <option value="publico">Público</option>
+                  <option value="privado">Privado</option>
+                  <option value="fechado">Fechado</option>
+                </select>
+              </div>
+              <div className="flex gap-3 justify-end pt-2">
+                <button type="button" onClick={() => setShowCreate(false)} className="px-4 py-2 text-sm text-zinc-400 hover:text-white transition-colors">Cancelar</button>
+                <button type="submit" disabled={creating}
+                  className="px-4 py-2 rounded-lg bg-white text-zinc-950 font-semibold text-sm hover:bg-zinc-100 transition-colors disabled:opacity-50">
+                  {creating ? 'Criando...' : 'Criar grupo'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

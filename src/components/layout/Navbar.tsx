@@ -30,7 +30,16 @@ export function Navbar() {
 
     const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user ?? null)
-      if (!session?.user) setProfile(null)
+      if (session?.user) {
+        supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', session.user.id)
+          .single()
+          .then(({ data: p }) => setProfile(p))
+      } else {
+        setProfile(null)
+      }
     })
     return () => listener.subscription.unsubscribe()
   }, [])
@@ -51,6 +60,7 @@ export function Navbar() {
 
   const privateLinks = user ? [
     { href: '/dashboard', label: 'Dashboard' },
+    { href: '/perfil', label: 'Perfil' },
     { href: '/alimentacao', label: 'Alimentação' },
     ...(isAdmin ? [{ href: '/gestao', label: 'Gestão' }] : []),
   ] : []

@@ -17,7 +17,7 @@ export default async function PromptPage({ params }: { params: Promise<{ id: str
       subcategorias(id, nome, slug),
       subniveis(id, nome, slug),
       areas_direito(id, nome, slug),
-      profiles(full_name, email)
+      profiles!autor_id(full_name, email, bio, instituicao)
     `)
     .eq('id', id)
     .in('status', ['ativo', 'aprovado'])
@@ -129,14 +129,40 @@ export default async function PromptPage({ params }: { params: Promise<{ id: str
                   {new Date(prompt.created_at).toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' })}
                 </dd>
               </div>
-              {(prompt as any).profiles?.full_name && (
+              {(prompt as any).internacional && (
                 <div>
-                  <dt className="text-xs text-zinc-600">Autor</dt>
-                  <dd className="text-sm text-zinc-300">{(prompt as any).profiles.full_name}</dd>
+                  <dt className="text-xs text-zinc-600">Origem</dt>
+                  <dd className="text-sm">
+                    <span className="px-2 py-0.5 rounded-full bg-indigo-500/10 text-indigo-400 text-xs border border-indigo-500/20">
+                      Internacional{(prompt as any).idioma ? ` · ${(prompt as any).idioma.toUpperCase()}` : ''}
+                    </span>
+                  </dd>
                 </div>
               )}
             </dl>
           </div>
+
+          {(prompt as any).profiles && (
+            <div className="p-4 rounded-xl border border-zinc-800 bg-zinc-900/50">
+              <h3 className="text-xs font-semibold text-zinc-400 uppercase tracking-wider mb-3">Autor</h3>
+              <div className="flex items-start gap-3">
+                <div className="w-9 h-9 rounded-full bg-zinc-800 border border-zinc-700 flex items-center justify-center font-bold text-white text-sm flex-shrink-0">
+                  {((prompt as any).profiles.full_name ?? (prompt as any).profiles.email ?? '?')[0]?.toUpperCase()}
+                </div>
+                <div className="min-w-0">
+                  <p className="text-sm text-white font-medium">
+                    {(prompt as any).profiles.full_name ?? (prompt as any).profiles.email}
+                  </p>
+                  {(prompt as any).profiles.instituicao && (
+                    <p className="text-xs text-zinc-500 mt-0.5">{(prompt as any).profiles.instituicao}</p>
+                  )}
+                  {(prompt as any).profiles.bio && (
+                    <p className="text-xs text-zinc-600 mt-1 line-clamp-2">{(prompt as any).profiles.bio}</p>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
 
           <div className="p-4 rounded-xl border border-zinc-800 bg-zinc-900/50 text-center">
             <p className="text-xs text-zinc-500 mb-3">Tem um prompt para compartilhar?</p>

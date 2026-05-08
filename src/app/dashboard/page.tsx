@@ -10,11 +10,14 @@ export default async function DashboardPage() {
   if (!user) redirect('/login')
 
   const { data: profile } = await supabase.from('profiles').select('*').eq('id', user.id).single()
-  const { data: meusProprompts, count } = await supabase
+  const { data: meusPrompts, count } = await supabase
     .from('prompts')
     .select('id, titulo, status, created_at, areas_direito(nome)', { count: 'exact' })
     .eq('autor_id', user.id)
     .order('created_at', { ascending: false })
+
+  const aprovados = meusPrompts?.filter(p => p.status === 'aprovado' || p.status === 'ativo').length ?? 0
+  const pendentes = meusPrompts?.filter(p => p.status === 'pendente').length ?? 0
 
   return (
     <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
@@ -42,22 +45,21 @@ export default async function DashboardPage() {
         </div>
         <div className="p-4 rounded-xl border border-zinc-800 bg-zinc-900/50">
           <p className="text-xs text-zinc-500 mb-1">Aprovados</p>
-          <p className="text-2xl font-bold text-green-400">
-            {meusProprompts?.filter(p => p.status === 'aprovado' || p.status === 'ativo').length ?? 0}
-          </p>
+          <p className="text-2xl font-bold text-green-400">{aprovados}</p>
         </div>
         <div className="p-4 rounded-xl border border-zinc-800 bg-zinc-900/50">
           <p className="text-xs text-zinc-500 mb-1">Pendentes</p>
-          <p className="text-2xl font-bold text-amber-400">
-            {meusProprompts?.filter(p => p.status === 'pendente').length ?? 0}
-          </p>
+          <p className="text-2xl font-bold text-amber-400">{pendentes}</p>
         </div>
       </div>
 
       {/* Meus prompts */}
       <div>
-        <h2 className="text-sm font-semibold text-zinc-400 uppercase tracking-wider mb-4">Meus prompts</h2>
-        {!meusProprompts?.length ? (
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-sm font-semibold text-zinc-400 uppercase tracking-wider">Meus prompts</h2>
+          <Link href="/perfil?tab=prompts" className="text-xs text-zinc-500 hover:text-white transition-colors">Ver todos →</Link>
+        </div>
+        {!meusPrompts?.length ? (
           <div className="text-center py-12 border border-dashed border-zinc-800 rounded-xl">
             <p className="text-zinc-500 mb-4">Você ainda não enviou nenhum prompt</p>
             <Link href="/dashboard/novo-prompt" className="text-sm text-white hover:underline">
@@ -66,7 +68,7 @@ export default async function DashboardPage() {
           </div>
         ) : (
           <div className="space-y-2">
-            {meusProprompts.map(p => (
+            {meusPrompts.slice(0, 5).map(p => (
               <div key={p.id} className="flex items-center justify-between p-4 rounded-xl border border-zinc-800 bg-zinc-900/30 hover:border-zinc-700 transition-colors">
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium text-white truncate">{p.titulo}</p>
@@ -98,7 +100,5 @@ function StatusBadge({ status }: { status: string }) {
     inativo: { label: 'Inativo', className: 'bg-zinc-500/10 text-zinc-400 border-zinc-500/20' },
   }
   const { label, className } = map[status] ?? map.inativo
-  return (
-    <span className={`px-2 py-0.5 rounded-full text-xs border ${className}`}>{label}</span>
-  )
+  return <span className={`px-2 py-0.5 rounded-full text-xs border ${className}`}>{label}</span>
 }

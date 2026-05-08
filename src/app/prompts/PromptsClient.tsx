@@ -18,6 +18,8 @@ export function PromptsClient({ initialPrompts, categorias, subcategorias, subni
   const [selectedSubcategoria, setSelectedSubcategoria] = useState('')
   const [selectedSubnivel, setSelectedSubnivel] = useState('')
   const [selectedArea, setSelectedArea] = useState('')
+  const [selectedOrigem, setSelectedOrigem] = useState('')
+  const [selectedIdioma, setSelectedIdioma] = useState('')
   const [sortOrder, setSortOrder] = useState<'recent' | 'oldest'>('recent')
 
   const filteredSubcategorias = selectedCategoria
@@ -45,6 +47,9 @@ export function PromptsClient({ initialPrompts, categorias, subcategorias, subni
     if (selectedSubcategoria) result = result.filter(p => p.subcategoria_id === selectedSubcategoria)
     if (selectedSubnivel) result = result.filter(p => p.subnivel_id === selectedSubnivel)
     if (selectedArea) result = result.filter(p => p.area_direito_id === selectedArea)
+    if (selectedOrigem === 'nacional') result = result.filter(p => !(p as any).internacional)
+    if (selectedOrigem === 'internacional') result = result.filter(p => (p as any).internacional)
+    if (selectedIdioma) result = result.filter(p => (p as any).idioma === selectedIdioma)
 
     result.sort((a, b) => {
       const da = new Date(a.created_at).getTime()
@@ -61,9 +66,11 @@ export function PromptsClient({ initialPrompts, categorias, subcategorias, subni
     setSelectedSubcategoria('')
     setSelectedSubnivel('')
     setSelectedArea('')
+    setSelectedOrigem('')
+    setSelectedIdioma('')
   }
 
-  const hasFilters = search || selectedCategoria || selectedSubcategoria || selectedSubnivel || selectedArea
+  const hasFilters = search || selectedCategoria || selectedSubcategoria || selectedSubnivel || selectedArea || selectedOrigem || selectedIdioma
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
@@ -160,6 +167,41 @@ export function PromptsClient({ initialPrompts, categorias, subcategorias, subni
                 {areas.map(a => <option key={a.id} value={a.id}>{a.nome}</option>)}
               </select>
             </div>
+
+            <div>
+              <label className="text-xs text-zinc-500 mb-1.5 block">Origem</label>
+              <select
+                value={selectedOrigem}
+                onChange={e => { setSelectedOrigem(e.target.value); setSelectedIdioma('') }}
+                className="w-full px-2.5 py-2 rounded-lg bg-zinc-900 border border-zinc-800 text-zinc-300 text-xs focus:outline-none focus:border-zinc-600"
+              >
+                <option value="">Todos</option>
+                <option value="nacional">Nacional (PT-BR)</option>
+                <option value="internacional">Internacional</option>
+              </select>
+            </div>
+
+            {selectedOrigem === 'internacional' && (
+              <div>
+                <label className="text-xs text-zinc-500 mb-1.5 block">Idioma</label>
+                <select
+                  value={selectedIdioma}
+                  onChange={e => setSelectedIdioma(e.target.value)}
+                  className="w-full px-2.5 py-2 rounded-lg bg-zinc-900 border border-zinc-800 text-zinc-300 text-xs focus:outline-none focus:border-zinc-600"
+                >
+                  <option value="">Todos os idiomas</option>
+                  <option value="en">Inglês (EN)</option>
+                  <option value="es">Espanhol (ES)</option>
+                  <option value="fr">Francês (FR)</option>
+                  <option value="de">Alemão (DE)</option>
+                  <option value="it">Italiano (IT)</option>
+                  <option value="pt-PT">Português (PT-PT)</option>
+                  <option value="zh">Chinês (ZH)</option>
+                  <option value="ja">Japonês (JA)</option>
+                  <option value="ar">Árabe (AR)</option>
+                </select>
+              </div>
+            )}
           </div>
         </aside>
 

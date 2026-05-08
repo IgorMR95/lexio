@@ -659,7 +659,8 @@ function UsuariosTab({ profiles, currentUserId, onReload }: { profiles: Profile[
 
   const handleRoleChange = async () => {
     if (!editing) return
-    await (supabase as any).from('profiles').update({ role: editRole }).eq('id', editing.id)
+    const { error } = await (supabase as any).from('profiles').update({ role: editRole }).eq('id', editing.id)
+    if (error) { alert('Erro ao alterar role: ' + error.message); return }
     setEditing(null)
     onReload()
   }
@@ -692,7 +693,15 @@ function UsuariosTab({ profiles, currentUserId, onReload }: { profiles: Profile[
   const handleDelete = async (p: Profile) => {
     if (!confirm(`Deletar o usuário "${p.full_name || p.email}"? Esta ação não pode ser desfeita.`)) return
     setDeleting(p.id)
-    await (supabase as any).from('profiles').delete().eq('id', p.id)
+    const res = await fetch('/api/admin/delete-user', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId: p.id }),
+    })
+    if (!res.ok) {
+      const { error } = await res.json()
+      alert('Erro ao deletar: ' + (error ?? 'desconhecido'))
+    }
     setDeleting(null)
     onReload()
   }

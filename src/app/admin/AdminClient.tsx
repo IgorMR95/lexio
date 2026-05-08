@@ -250,6 +250,11 @@ function PromptsTab({ areas, categorias, subcategorias }: { areas: Area[]; categ
   const [editing, setEditing] = useState<any>(null)
   const [editForm, setEditForm] = useState<any>({})
   const [saving, setSaving] = useState(false)
+  const [selected, setSelected] = useState<Set<string>>(new Set())
+  const [batchAction, setBatchAction] = useState('')
+  const [batchInternacional, setBatchInternacional] = useState('')
+  const [batchIdioma, setBatchIdioma] = useState('')
+  const [batchLoading, setBatchLoading] = useState(false)
 
   const searchRef = useRef(search)
   const filterStatusRef = useRef(filterStatus)
@@ -260,6 +265,7 @@ function PromptsTab({ areas, categorias, subcategorias }: { areas: Area[]; categ
 
   const load = useCallback(async (p: number, s: string, fs: string, fi: string) => {
     setLoading(true)
+    setSelected(new Set())
     let q = (supabase as any)
       .from('prompts')
       .select('*, areas_direito(nome), categorias_principais(nome), profiles!autor_id(full_name)', { count: 'exact' })
@@ -285,6 +291,47 @@ function PromptsTab({ areas, categorias, subcategorias }: { areas: Area[]; categ
   }, [page])
 
   const totalPages = Math.ceil(total / PAGE_SIZE)
+
+  const toggleSelect = (id: string) => {
+    setSelected(prev => {
+      const next = new Set(prev)
+      if (next.has(id)) { next.delete(id) } else { next.add(id) }
+      return next
+    })
+  }
+
+  const toggleSelectAll = () => {
+    if (selected.size === data.length) {
+      setSelected(new Set())
+    } else {
+      setSelected(new Set(data.map(r => r.id)))
+    }
+  }
+
+  const executeBatch = async () => {
+    if (!batchAction || selected.size === 0) return
+    setBatchLoading(true)
+    const ids = Array.from(selected)
+
+    if (batchAction === 'deletar') {
+      if (!confirm(`Deletar ${ids.length} prompt(s) selecionado(s)?`)) { setBatchLoading(false); return }
+      await (supabase as any).from('prompts').delete().in('id', ids)
+    } else if (['aprovado', 'ativo', 'pendente', 'inativo'].includes(batchAction)) {
+      await (supabase as any).from('prompts').update({ status: batchAction }).in('id', ids)
+    } else if (batchAction === 'origem') {
+      const isIntl = batchInternacional === 'sim'
+      await (supabase as any).from('prompts').update({
+        internacional: isIntl,
+        idioma: isIntl ? (batchIdioma || null) : null,
+      }).in('id', ids)
+    }
+
+    setBatchAction('')
+    setBatchInternacional('')
+    setBatchIdioma('')
+    setBatchLoading(false)
+    load(page, searchRef.current, filterStatusRef.current, filterInternacionalRef.current)
+  }
 
   const openEdit = (row: any) => {
     setEditing(row)
@@ -355,6 +402,7 @@ function PromptsTab({ areas, categorias, subcategorias }: { areas: Area[]; categ
 
   return (
     <div className="space-y-4">
+      {/* Filtros */}
       <div className="flex gap-3 items-center flex-wrap">
         <div className="relative flex-1 min-w-[200px]">
           <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -383,10 +431,56 @@ function PromptsTab({ areas, categorias, subcategorias }: { areas: Area[]; categ
         </button>
       </div>
 
+      {/* Ações em lote */}
+      {selected.size > 0 && (
+        <div className="flex items-center gap-3 flex-wrap p-3 rounded-lg bg-zinc-900 border border-zinc-700">
+          <span className="text-xs text-zinc-400 font-medium">{selected.size} selecionado(s)</span>
+          <select value={batchAction} onChange={e => { setBatchAction(e.target.value); setBatchInternacional(''); setBatchIdioma('') }}
+            className="px-3 py-1.5 rounded-lg bg-zinc-800 border border-zinc-700 text-zinc-300 text-xs focus:outline-none">
+            <option value="">Ação em lote...</option>
+            <option value="aprovado">Marcar como Aprovado</option>
+            <option value="ativo">Marcar como Ativo</option>
+            <option value="pendente">Marcar como Pendente</option>
+            <option value="inativo">Marcar como Inativo</option>
+            <option value="origem">Reclassificar Origem</option>
+            <option value="deletar">Deletar selecionados</option>
+          </select>
+          {batchAction === 'origem' && (
+            <>
+              <select value={batchInternacional} onChange={e => { setBatchInternacional(e.target.value); setBatchIdioma('') }}
+                className="px-3 py-1.5 rounded-lg bg-zinc-800 border border-zinc-700 text-zinc-300 text-xs focus:outline-none">
+                <option value="">Origem...</option>
+                <option value="nao">Nacional</option>
+                <option value="sim">Internacional</option>
+              </select>
+              {batchInternacional === 'sim' && (
+                <select value={batchIdioma} onChange={e => setBatchIdioma(e.target.value)}
+                  className="px-3 py-1.5 rounded-lg bg-zinc-800 border border-zinc-700 text-zinc-300 text-xs focus:outline-none">
+                  <option value="">Idioma (opcional)...</option>
+                  {IDIOMAS.map(l => <option key={l.code} value={l.code}>{l.label}</option>)}
+                </select>
+              )}
+            </>
+          )}
+          {batchAction && (
+            <button onClick={executeBatch} disabled={batchLoading}
+              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors disabled:opacity-50 ${batchAction === 'deletar' ? 'bg-red-500/20 text-red-400 border border-red-500/30 hover:bg-red-500/30' : 'bg-white text-zinc-950 hover:bg-zinc-100'}`}>
+              {batchLoading ? 'Aplicando...' : 'Aplicar'}
+            </button>
+          )}
+          <button onClick={() => setSelected(new Set())} className="text-xs text-zinc-600 hover:text-zinc-400 transition-colors ml-auto">Limpar seleção</button>
+        </div>
+      )}
+
       <div className="rounded-xl border border-zinc-800 overflow-hidden">
         <table className="w-full text-sm">
           <thead>
             <tr className="bg-zinc-900/50 border-b border-zinc-800">
+              <th className="px-4 py-3 w-8">
+                <input type="checkbox" checked={data.length > 0 && selected.size === data.length}
+                  onChange={toggleSelectAll}
+                  className="rounded border-zinc-600 bg-zinc-800 text-white" />
+              </th>
               <th className="text-left px-4 py-3 text-xs font-medium text-zinc-500">Título</th>
               <th className="text-left px-4 py-3 text-xs font-medium text-zinc-500 hidden md:table-cell">Autor</th>
               <th className="text-left px-4 py-3 text-xs font-medium text-zinc-500">Status</th>
@@ -396,11 +490,15 @@ function PromptsTab({ areas, categorias, subcategorias }: { areas: Area[]; categ
           </thead>
           <tbody className="divide-y divide-zinc-800/50">
             {loading ? (
-              <tr><td colSpan={5} className="px-4 py-10 text-center text-zinc-500 text-sm">Carregando...</td></tr>
+              <tr><td colSpan={6} className="px-4 py-10 text-center text-zinc-500 text-sm">Carregando...</td></tr>
             ) : data.length === 0 ? (
-              <tr><td colSpan={5} className="px-4 py-10 text-center text-zinc-500 text-sm">Nenhum prompt encontrado</td></tr>
+              <tr><td colSpan={6} className="px-4 py-10 text-center text-zinc-500 text-sm">Nenhum prompt encontrado</td></tr>
             ) : data.map(row => (
-              <tr key={row.id} className="hover:bg-zinc-900/30 transition-colors">
+              <tr key={row.id} className={`hover:bg-zinc-900/30 transition-colors ${selected.has(row.id) ? 'bg-zinc-900/50' : ''}`}>
+                <td className="px-4 py-3">
+                  <input type="checkbox" checked={selected.has(row.id)} onChange={() => toggleSelect(row.id)}
+                    className="rounded border-zinc-600 bg-zinc-800" />
+                </td>
                 <td className="px-4 py-3">
                   <p className="text-white text-sm font-medium line-clamp-1">{row.titulo}</p>
                   <p className="text-zinc-600 text-xs mt-0.5">{new Date(row.created_at).toLocaleDateString('pt-BR')}</p>

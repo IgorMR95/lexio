@@ -25,8 +25,8 @@ export default async function HomePage() {
 
   const perfis = [
     {
-      titulo: 'Advogados',
-      desc: 'Petições, contratos, pareceres e estratégias jurídicas com prompts prontos para uso imediato.',
+      titulo: 'Advogado Privado',
+      desc: 'Petições, contratos, pareceres e estratégias jurídicas para escritórios e advocacia de causa.',
       icon: (
         <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 6l3 1m0 0l-3 9a5.002 5.002 0 006.001 0M6 7l3 9M6 7l6-2m6 2l3-1m-3 1l-3 9a5.002 5.002 0 006.001 0M18 7l3 9m-3-9l-6-2m0-2v2m0 16V5m0 16H9m3 0h3" />
@@ -36,30 +36,30 @@ export default async function HomePage() {
       badge: 'text-green-400 bg-green-500/10 border-green-500/20',
     },
     {
-      titulo: 'Magistrados',
-      desc: 'Sentenças, despachos e acórdãos organizados por esfera e especialidade da vara.',
+      titulo: 'Advogado Público',
+      desc: 'Peças de advocacia pública, pareceres administrativos e consultoria jurídica estatal.',
       icon: (
         <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 14v3m4-3v3m4-3v3M3 21h18M3 10h18M3 7l9-4 9 4M4 10h16v11H4V10z" />
+        </svg>
+      ),
+      cor: 'from-cyan-700/20 to-teal-700/5',
+      badge: 'text-cyan-400 bg-cyan-500/10 border-cyan-500/20',
+    },
+    {
+      titulo: 'Magistrado',
+      desc: 'Sentenças, despachos, acórdãos e atos ordinatórios organizados por esfera e matéria.',
+      icon: (
+        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 3v1m0 16v1m8.66-13l-.87.5M4.21 16.5l-.87.5M20.66 16.5l-.87-.5M4.21 7.5l-.87-.5M21 12h-1M4 12H3m15.364-6.364l-.707.707M6.343 17.657l-.707.707M17.657 17.657l-.707-.707M6.343 6.343l-.707-.707M12 8a4 4 0 100 8 4 4 0 000-8z" />
         </svg>
       ),
       cor: 'from-teal-700/20 to-cyan-700/5',
       badge: 'text-teal-400 bg-teal-500/10 border-teal-500/20',
     },
     {
-      titulo: 'Acadêmicos',
-      desc: 'Fichamentos, resenhas, artigos científicos e pesquisas jurídicas com IA.',
-      icon: (
-        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 14l9-5-9-5-9 5 9 5zm0 0l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0112 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14z" />
-        </svg>
-      ),
-      cor: 'from-emerald-700/20 to-green-900/5',
-      badge: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20',
-    },
-    {
-      titulo: 'Defensores',
-      desc: 'Habeas corpus, recursos e peças da defensoria pública com fundamentação sólida.',
+      titulo: 'Defensor Público',
+      desc: 'Habeas corpus, recursos, petições de gratuidade e peças em favor de hipossuficientes.',
       icon: (
         <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
@@ -67,6 +67,50 @@ export default async function HomePage() {
       ),
       cor: 'from-green-900/40 to-zinc-900/5',
       badge: 'text-green-300 bg-green-500/8 border-green-500/15',
+    },
+    {
+      titulo: 'Promotor de Justiça',
+      desc: 'Denúncias, recursos ministeriais, ANPPs e ações civis públicas.',
+      icon: (
+        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z" />
+        </svg>
+      ),
+      cor: 'from-emerald-700/20 to-green-900/5',
+      badge: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20',
+    },
+    {
+      titulo: 'Mestrando e Doutorando',
+      desc: 'Fichamentos, projetos de pesquisa, teses e artigos para periódicos Qualis.',
+      icon: (
+        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 14l9-5-9-5-9 5 9 5zm0 0l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0112 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14z" />
+        </svg>
+      ),
+      cor: 'from-lime-700/20 to-green-900/5',
+      badge: 'text-lime-400 bg-lime-500/10 border-lime-500/20',
+    },
+    {
+      titulo: 'Concurseiro',
+      desc: 'Resumos doutrinários, análise de jurisprudência e simulados para magistratura, MP e OAB.',
+      icon: (
+        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+        </svg>
+      ),
+      cor: 'from-green-800/30 to-zinc-900/5',
+      badge: 'text-green-400 bg-green-500/10 border-green-500/20',
+    },
+    {
+      titulo: 'Estudante de Direito',
+      desc: 'Auxílio em TCC, moot courts, seminários, fichamentos e compreensão de conceitos jurídicos.',
+      icon: (
+        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+        </svg>
+      ),
+      cor: 'from-emerald-900/30 to-zinc-900/5',
+      badge: 'text-emerald-300 bg-emerald-500/8 border-emerald-500/15',
     },
   ]
 
@@ -231,7 +275,7 @@ export default async function HomePage() {
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
           <div className="text-center mb-14">
             <p className="text-xs font-semibold text-green-400 uppercase tracking-widest mb-3">Plataforma especializada</p>
-            <h2 className="text-3xl font-bold text-white">Para cada profissional do direito</h2>
+            <h2 className="text-3xl font-bold text-white">Para cada jurista</h2>
             <p className="text-zinc-500 mt-3 max-w-xl mx-auto text-sm leading-relaxed">
               Prompts organizados por perfil profissional para que você encontre exatamente o que precisa.
             </p>

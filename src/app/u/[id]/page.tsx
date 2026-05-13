@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
+import { FollowButton } from '@/components/ui/FollowButton'
 
 export const dynamic = 'force-dynamic'
 
@@ -14,6 +15,26 @@ export default async function PublicProfilePage({ params }: { params: { id: stri
     .single()
 
   if (!profile) notFound()
+
+  const { data: { user: currentUser } } = await supabase.auth.getUser()
+
+  // Follower/following counts
+  const [{ count: seguidoresCount }, { count: seguindoCount }] = await Promise.all([
+    (supabase as any).from('seguidores').select('id', { count: 'exact', head: true }).eq('seguido_id', params.id),
+    (supabase as any).from('seguidores').select('id', { count: 'exact', head: true }).eq('seguidor_id', params.id),
+  ])
+
+  // Is current user following this profile?
+  let isFollowing = false
+  if (currentUser && currentUser.id !== params.id) {
+    const { data: followData } = await (supabase as any)
+      .from('seguidores')
+      .select('id')
+      .eq('seguidor_id', currentUser.id)
+      .eq('seguido_id', params.id)
+      .single()
+    isFollowing = !!followData
+  }
 
   const { data: prompts } = await supabase
     .from('prompts')
@@ -55,12 +76,21 @@ export default async function PublicProfilePage({ params }: { params: { id: stri
           {initial}
         </div>
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-3 flex-wrap mb-1">
-            <h1 className="text-xl font-bold text-white">{displayName}</h1>
-            {profile.role === 'admin' && (
-              <span className="text-xs px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20">
-                Admin
-              </span>
+          <div className="flex items-start justify-between gap-3 flex-wrap mb-1">
+            <div className="flex items-center gap-3 flex-wrap">
+              <h1 className="text-xl font-bold text-white">{displayName}</h1>
+              {profile.role === 'admin' && (
+                <span className="text-xs px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20">
+                  Admin
+                </span>
+              )}
+            </div>
+            {currentUser?.id !== params.id && (
+              <FollowButton
+                seguidoId={params.id}
+                initialFollowing={isFollowing}
+                userId={currentUser?.id ?? null}
+              />
             )}
           </div>
           {profile.instituicao && (
@@ -72,9 +102,17 @@ export default async function PublicProfilePage({ params }: { params: { id: stri
           {!profile.bio && !profile.instituicao && (
             <p className="text-sm text-zinc-600 italic">Nenhuma informação preenchida.</p>
           )}
-          <p className="text-xs text-zinc-700 mt-3">
-            Membro desde {new Date(profile.created_at).toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}
-          </p>
+          <div className="flex items-center gap-4 mt-3">
+            <span className="text-xs text-zinc-500">
+              <span className="text-white font-semibold">{seguidoresCount ?? 0}</span> seguidores
+            </span>
+            <span className="text-xs text-zinc-500">
+              <span className="text-white font-semibold">{seguindoCount ?? 0}</span> seguindo
+            </span>
+            <span className="text-xs text-zinc-700">
+              Membro desde {new Date(profile.created_at).toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}
+            </span>
+          </div>
         </div>
       </div>
 

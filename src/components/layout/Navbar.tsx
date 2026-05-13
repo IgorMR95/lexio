@@ -6,6 +6,7 @@ import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import type { User } from '@supabase/supabase-js'
 import type { Profile } from '@/lib/supabase/types'
+import { NotificacoesBell } from '@/components/ui/NotificacoesBell'
 
 export function Navbar() {
   const pathname = usePathname()
@@ -13,6 +14,8 @@ export function Navbar() {
   const [user, setUser] = useState<User | null>(null)
   const [profile, setProfile] = useState<Profile | null>(null)
   const [menuOpen, setMenuOpen] = useState(false)
+  const [notificacoes, setNotificacoes] = useState<any[]>([])
+  const [naoLidas, setNaoLidas] = useState(0)
   const supabase = createClient()
 
   useEffect(() => {
@@ -25,6 +28,7 @@ export function Navbar() {
           .eq('id', data.user.id)
           .single()
           .then(({ data: p }) => setProfile(p))
+        fetchNotificacoes(data.user.id)
       }
     })
 
@@ -37,12 +41,28 @@ export function Navbar() {
           .eq('id', session.user.id)
           .single()
           .then(({ data: p }) => setProfile(p))
+        fetchNotificacoes(session.user.id)
       } else {
         setProfile(null)
+        setNotificacoes([])
+        setNaoLidas(0)
       }
     })
     return () => listener.subscription.unsubscribe()
   }, [])
+
+  async function fetchNotificacoes(userId: string) {
+    const { data } = await (supabase as any)
+      .from('notificacoes')
+      .select('id, tipo, lida, created_at, ator_id, prompt_id, prompts(id, titulo), ator:ator_id(full_name, email)')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false })
+      .limit(20)
+    if (data) {
+      setNotificacoes(data)
+      setNaoLidas(data.filter((n: any) => !n.lida).length)
+    }
+  }
 
   const handleLogout = async () => {
     await supabase.auth.signOut()
@@ -103,6 +123,7 @@ export function Navbar() {
                     Usuário
                   </span>
                 )}
+                <NotificacoesBell notificacoes={notificacoes} naoLidas={naoLidas} />
                 <button
                   onClick={handleLogout}
                   className="text-sm px-3 py-1.5 rounded-md border border-zinc-700 text-zinc-400 hover:text-white hover:border-zinc-500 transition-colors"

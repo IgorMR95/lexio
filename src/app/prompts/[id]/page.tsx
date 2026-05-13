@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { notFound } from 'next/navigation'
 import { CopyButton } from '@/components/ui/CopyButton'
 import { UpvoteButton } from '@/components/ui/UpvoteButton'
+import { ComentariosSection } from '@/components/ui/ComentariosSection'
 import Link from 'next/link'
 
 export const dynamic = 'force-dynamic'
@@ -57,6 +58,13 @@ export default async function PromptPage({ params }: { params: { id: string } })
   }
 
   const isDestaque = !!(prompt as any).destaque
+
+  // Comentários
+  const { data: comentarios } = await (supabase as any)
+    .from('prompt_comentarios')
+    .select('id, conteudo, created_at, autor_id, profiles(full_name, email)')
+    .eq('prompt_id', id)
+    .order('created_at', { ascending: true })
 
   const statusMap: Record<string, { label: string; color: string }> = {
     pendente: { label: 'Aguardando aprovação', color: 'bg-amber-500/10 text-amber-400 border-amber-500/20' },
@@ -135,6 +143,13 @@ export default async function PromptPage({ params }: { params: { id: string } })
               ))}
             </div>
           )}
+
+          <ComentariosSection
+            promptId={id}
+            comentarios={comentarios ?? []}
+            userId={user?.id ?? null}
+            isAdmin={isAdmin}
+          />
         </div>
 
         {/* Sidebar */}

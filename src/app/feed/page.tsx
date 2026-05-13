@@ -9,7 +9,6 @@ export default async function FeedPage() {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  // Quem o usuário segue
   const { data: seguindo } = await (supabase as any)
     .from('seguidores')
     .select('seguido_id')
@@ -17,7 +16,6 @@ export default async function FeedPage() {
 
   const seguidoIds: string[] = (seguindo ?? []).map((s: any) => s.seguido_id)
 
-  // Prompts das pessoas seguidas
   const { data: prompts } = seguidoIds.length > 0
     ? await supabase
         .from('prompts')
@@ -28,7 +26,6 @@ export default async function FeedPage() {
         .limit(50)
     : { data: [] }
 
-  // Profiles dos autores
   const autorIds = Array.from(new Set((prompts ?? []).map((p: any) => p.autor_id).filter(Boolean)))
   const { data: profiles } = autorIds.length > 0
     ? await supabase.from('profiles').select('id, full_name, email').in('id', autorIds)
@@ -37,7 +34,6 @@ export default async function FeedPage() {
   const profileMap: Record<string, any> = {}
   for (const p of profiles ?? []) profileMap[p.id] = p
 
-  // Contagem de votos por prompt
   const promptIds = (prompts ?? []).map((p: any) => p.id)
   const { data: votos } = promptIds.length > 0
     ? await (supabase as any)
@@ -72,42 +68,33 @@ export default async function FeedPage() {
         </div>
       ) : (
         <div className="space-y-3">
-          {prompts.map((p: any) => {
+          {(prompts ?? []).map((p: any) => {
             const autor = profileMap[p.autor_id]
             const nome = autor?.full_name ?? autor?.email ?? 'Usuário'
             const inicial = nome[0]?.toUpperCase() ?? '?'
-            const votos = votosMap[p.id] ?? 0
+            const totalVotos = votosMap[p.id] ?? 0
 
             return (
-              <Link
-                key={p.id}
-                href={`/prompts/${p.id}`}
-                className="block p-4 rounded-xl border border-zinc-800 bg-zinc-900/30 hover:border-zinc-700 hover:bg-zinc-900 transition-all"
-              >
-                <div className="flex items-start gap-3">
-                  <Link
-                    href={`/u/${p.autor_id}`}
-                    onClick={e => e.stopPropagation()}
-                    className="flex-shrink-0 w-8 h-8 rounded-full bg-zinc-800 border border-zinc-700 flex items-center justify-center text-xs font-bold text-white hover:border-zinc-500 transition-colors mt-0.5"
-                  >
-                    {inicial}
-                  </Link>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1">
-                      <Link
-                        href={`/u/${p.autor_id}`}
-                        onClick={e => e.stopPropagation()}
-                        className="text-xs font-medium text-zinc-400 hover:text-white transition-colors"
-                      >
-                        {nome}
-                      </Link>
-                      <span className="text-xs text-zinc-700">·</span>
-                      <span className="text-xs text-zinc-700">
-                        {new Date(p.created_at).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })}
-                      </span>
-                    </div>
+              <div key={p.id} className="flex items-start gap-3 p-4 rounded-xl border border-zinc-800 bg-zinc-900/30 hover:border-zinc-700 hover:bg-zinc-900 transition-all">
+                <Link
+                  href={`/u/${p.autor_id}`}
+                  className="flex-shrink-0 w-8 h-8 rounded-full bg-zinc-800 border border-zinc-700 flex items-center justify-center text-xs font-bold text-white hover:border-zinc-500 transition-colors mt-0.5"
+                >
+                  {inicial}
+                </Link>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 mb-1">
+                    <Link href={`/u/${p.autor_id}`} className="text-xs font-medium text-zinc-400 hover:text-white transition-colors">
+                      {nome}
+                    </Link>
+                    <span className="text-xs text-zinc-700">·</span>
+                    <span className="text-xs text-zinc-700">
+                      {new Date(p.created_at).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })}
+                    </span>
+                  </div>
+                  <Link href={`/prompts/${p.id}`} className="block group">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <p className="text-sm font-medium text-white">{p.titulo}</p>
+                      <p className="text-sm font-medium text-white group-hover:text-green-300 transition-colors">{p.titulo}</p>
                       {p.destaque && (
                         <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-yellow-500/10 text-yellow-400 text-[10px] border border-yellow-500/20">
                           <svg className="w-2.5 h-2.5" fill="currentColor" viewBox="0 0 24 24">
@@ -121,24 +108,23 @@ export default async function FeedPage() {
                       <p className="text-xs text-zinc-500 mt-0.5 line-clamp-2">{p.descricao_curta}</p>
                     )}
                     <div className="flex items-center gap-3 mt-2">
-                      {p.areas_direito?.nome && (
+                      {(p as any).areas_direito?.nome && (
                         <span className="text-xs px-1.5 py-0.5 rounded-full bg-green-500/10 text-green-400 border border-green-500/20">
-                          {p.areas_direito.nome}
+                          {(p as any).areas_direito.nome}
                         </span>
                       )}
-                      {votos > 0 && (
+                      {totalVotos > 0 && (
                         <span className="flex items-center gap-1 text-xs text-zinc-600">
                           <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 24 24">
                             <path d="M7 11v8a1 1 0 01-1 1H4a1 1 0 01-1-1v-7a1 1 0 011-1h2V9a6 6 0 0112 0v1h2a1 1 0 011 1v7a1 1 0 01-1 1h-2a1 1 0 01-1-1v-8H7z" />
                           </svg>
-                          {votos}
+                          {totalVotos}
                         </span>
                       )}
                     </div>
-                  </div>
-                  <span className="text-xs text-zinc-600 flex-shrink-0 mt-0.5">Ver →</span>
+                  </Link>
                 </div>
-              </Link>
+              </div>
             )
           })}
         </div>

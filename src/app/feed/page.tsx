@@ -29,7 +29,7 @@ export default async function FeedPage() {
     : { data: [] }
 
   // Profiles dos autores
-  const autorIds = [...new Set((prompts ?? []).map((p: any) => p.autor_id).filter(Boolean))]
+  const autorIds = Array.from(new Set((prompts ?? []).map((p: any) => p.autor_id).filter(Boolean)))
   const { data: profiles } = autorIds.length > 0
     ? await supabase.from('profiles').select('id, full_name, email').in('id', autorIds)
     : { data: [] }

@@ -79,6 +79,7 @@ export function Navbar() {
   ]
 
   const privateLinks = user ? [
+    { href: '/feed', label: 'Feed' },
     { href: '/perfil', label: 'Perfil' },
     { href: '/alimentacao', label: 'Alimentação' },
     ...(isAdmin ? [{ href: '/gestao', label: 'Gestão' }] : []),

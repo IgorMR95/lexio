@@ -20,10 +20,11 @@ interface Props {
   topSemana: any[]
   topAllTime: any[]
   destaques: any[]
+  usuariosDestaque: any[]
 }
 
-export function SkillsClient({ initialSkills, areas, topSemana, topAllTime, destaques }: Props) {
-  const [activeTab, setActiveTab] = useState<'todos' | 'melhores'>('todos')
+export function SkillsClient({ initialSkills, areas, topSemana, topAllTime, destaques, usuariosDestaque }: Props) {
+  const [activeTab, setActiveTab] = useState<'todos' | 'melhores' | 'usuarios'>('todos')
   const [search, setSearch] = useState('')
   const [selectedTipo, setSelectedTipo] = useState('')
   const [selectedArea, setSelectedArea] = useState('')
@@ -84,11 +85,24 @@ export function SkillsClient({ initialSkills, areas, topSemana, topAllTime, dest
             </svg>
             Melhores
           </button>
+          <button
+            onClick={() => setActiveTab('usuarios')}
+            className={`flex items-center gap-1.5 px-4 py-2 rounded-md text-sm font-medium transition-colors ${activeTab === 'usuarios' ? 'bg-white text-zinc-950' : 'text-zinc-400 hover:text-white'}`}
+          >
+            <svg className={`w-3.5 h-3.5 ${activeTab === 'usuarios' ? 'text-violet-600' : 'text-violet-400'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
+            </svg>
+            Usuários Destaque
+          </button>
         </div>
       </div>
 
       {activeTab === 'melhores' && (
         <MelhoresSkills topSemana={topSemana} topAllTime={topAllTime} destaques={destaques} />
+      )}
+
+      {activeTab === 'usuarios' && (
+        <UsuariosDestaqueSkills usuarios={usuariosDestaque} />
       )}
 
       {activeTab === 'todos' && (
@@ -256,6 +270,56 @@ function SkillCard({ skill }: { skill: any }) {
         </div>
       </div>
     </Link>
+  )
+}
+
+function UsuariosDestaqueSkills({ usuarios }: { usuarios: any[] }) {
+  if (usuarios.length === 0) {
+    return (
+      <div className="text-center py-20">
+        <p className="text-zinc-500">Nenhum usuário destaque ainda.</p>
+        <p className="text-zinc-600 text-sm mt-1">Compartilhe skills para aparecer aqui!</p>
+      </div>
+    )
+  }
+  return (
+    <div>
+      <p className="text-zinc-500 text-sm mb-6">Autores com mais skills publicadas na plataforma</p>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        {usuarios.map((u: any, i: number) => (
+          <Link key={u.id} href={`/u/${u.id}`} className="group block">
+            <div className="p-5 rounded-xl border border-zinc-800 bg-zinc-900/50 hover:border-zinc-700 hover:bg-zinc-900 transition-all">
+              <div className="flex items-start gap-4">
+                <div className="relative flex-shrink-0">
+                  <div className="w-12 h-12 rounded-full bg-gradient-to-br from-violet-500/30 to-green-500/30 border border-zinc-700 flex items-center justify-center text-white font-bold text-lg">
+                    {(u.full_name ?? u.email ?? '?')[0]?.toUpperCase()}
+                  </div>
+                  {i < 3 && (
+                    <span className={`absolute -top-1 -right-1 w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold border ${i === 0 ? 'bg-yellow-500 text-zinc-900 border-yellow-400' : i === 1 ? 'bg-zinc-300 text-zinc-900 border-zinc-200' : 'bg-amber-600 text-white border-amber-500'}`}>
+                      {i + 1}
+                    </span>
+                  )}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="font-semibold text-white text-sm group-hover:text-violet-300 transition-colors truncate">
+                    {u.full_name ?? u.email ?? 'Usuário'}
+                  </p>
+                  {u.bio && <p className="text-xs text-zinc-500 mt-0.5 line-clamp-2">{u.bio}</p>}
+                  <div className="mt-2 flex items-center gap-1.5">
+                    <svg className="w-3.5 h-3.5 text-violet-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
+                    </svg>
+                    <span className="text-xs text-zinc-400">
+                      <span className="font-semibold text-violet-300">{u.total_skills}</span> skill{u.total_skills !== 1 ? 's' : ''}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </Link>
+        ))}
+      </div>
+    </div>
   )
 }
 

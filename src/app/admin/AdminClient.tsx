@@ -24,6 +24,7 @@ interface Props {
 const TABS = [
   { id: 'revisao', label: 'Revisão' },
   { id: 'prompts', label: 'Prompts' },
+  { id: 'skills', label: 'Skills MD' },
   { id: 'usuarios', label: 'Usuários' },
   { id: 'estrutura', label: 'Estrutura' },
   { id: 'areas', label: 'Áreas' },
@@ -90,6 +91,7 @@ export function AdminClient({ currentUserId, profiles: initialProfiles, auditLog
 
       {activeTab === 'revisao' && <RevisaoTab onCountChange={setPendentes} />}
       {activeTab === 'prompts' && <PromptsTab areas={areas} categorias={categorias} subcategorias={subcategorias} />}
+      {activeTab === 'skills' && <SkillsAdminTab />}
       {activeTab === 'usuarios' && <UsuariosTab profiles={profiles} currentUserId={currentUserId} onReload={reloadProfiles} />}
       {activeTab === 'estrutura' && (
         <EstruturaTab
@@ -122,10 +124,44 @@ export function AdminClient({ currentUserId, profiles: initialProfiles, auditLog
 // ── Revisão ───────────────────────────────────────────────────────────────────
 
 function RevisaoTab({ onCountChange }: { onCountChange: (n: number) => void }) {
+  const [subtab, setSubtab] = useState<'prompts' | 'skills'>('prompts')
+  const [promptCount, setPromptCount] = useState(0)
+  const [skillCount, setSkillCount] = useState(0)
+
+  const handlePromptCount = useCallback((n: number) => {
+    setPromptCount(n)
+    onCountChange(n + skillCount)
+  }, [skillCount, onCountChange])
+
+  const handleSkillCount = useCallback((n: number) => {
+    setSkillCount(n)
+    onCountChange(promptCount + n)
+  }, [promptCount, onCountChange])
+
+  return (
+    <div>
+      <div className="flex gap-1 bg-zinc-900/50 p-1 rounded-lg w-fit mb-6">
+        <button onClick={() => setSubtab('prompts')}
+          className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${subtab === 'prompts' ? 'bg-white text-zinc-950' : 'text-zinc-400 hover:text-white'}`}>
+          Prompts
+          {promptCount > 0 && <span className="ml-1.5 px-1.5 py-0.5 rounded-full bg-amber-500/20 text-amber-400 text-xs">{promptCount}</span>}
+        </button>
+        <button onClick={() => setSubtab('skills')}
+          className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${subtab === 'skills' ? 'bg-white text-zinc-950' : 'text-zinc-400 hover:text-white'}`}>
+          Skills MD
+          {skillCount > 0 && <span className="ml-1.5 px-1.5 py-0.5 rounded-full bg-amber-500/20 text-amber-400 text-xs">{skillCount}</span>}
+        </button>
+      </div>
+      {subtab === 'prompts' && <RevisaoPromptsTab onCountChange={handlePromptCount} />}
+      {subtab === 'skills' && <RevisaoSkillsTab onCountChange={handleSkillCount} />}
+    </div>
+  )
+}
+
+function RevisaoPromptsTab({ onCountChange }: { onCountChange: (n: number) => void }) {
   const supabase = createClient()
   const [prompts, setPrompts] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
-  const [expanded, setExpanded] = useState<string | null>(null)
   const [detalhes, setDetalhes] = useState<any | null>(null)
 
   const load = useCallback(async () => {
@@ -288,6 +324,220 @@ function RevisaoTab({ onCountChange }: { onCountChange: (n: number) => void }) {
           </div>
         </div>
       )}
+    </div>
+  )
+}
+
+// ── Revisão Skills ────────────────────────────────────────────────────────────
+
+function RevisaoSkillsTab({ onCountChange }: { onCountChange: (n: number) => void }) {
+  const supabase = createClient()
+  const [skills, setSkills] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
+  const [detalhes, setDetalhes] = useState<any | null>(null)
+
+  const TIPOS: Record<string, string> = {
+    skill: 'Skill', persona: 'Persona', workflow: 'Workflow', instrucao: 'Instrução',
+  }
+
+  const load = useCallback(async () => {
+    setLoading(true)
+    const { data } = await (supabase as any)
+      .from('skills')
+      .select('*, areas_direito(nome)')
+      .eq('status', 'pendente')
+      .order('created_at', { ascending: true })
+    if (!data) { setLoading(false); return }
+    const autorIds = Array.from(new Set<string>(data.map((s: any) => s.autor_id).filter(Boolean)))
+    const profileMap: Record<string, any> = {}
+    if (autorIds.length > 0) {
+      const { data: profiles } = await (supabase as any).from('profiles').select('id, full_name, email').in('id', autorIds)
+      profiles?.forEach((p: any) => { profileMap[p.id] = p })
+    }
+    setSkills(data.map((s: any) => ({ ...s, autorProfile: profileMap[s.autor_id] ?? null })))
+    onCountChange(data.length)
+    setLoading(false)
+  }, [onCountChange])
+
+  useEffect(() => { load() }, [load])
+
+  const aprovar = async (id: string) => {
+    await (supabase as any).from('skills').update({ status: 'aprovado' }).eq('id', id)
+    load()
+  }
+  const ativar = async (id: string) => {
+    await (supabase as any).from('skills').update({ status: 'ativo' }).eq('id', id)
+    load()
+  }
+  const rejeitar = async (id: string) => {
+    if (!confirm('Rejeitar e remover esta skill?')) return
+    await (supabase as any).from('skills').delete().eq('id', id)
+    load()
+  }
+
+  if (loading) return <div className="text-center py-16 text-zinc-500 text-sm">Carregando...</div>
+  if (skills.length === 0) return (
+    <div className="text-center py-16 border border-dashed border-zinc-800 rounded-xl">
+      <p className="text-zinc-400 font-medium">Nenhuma skill pendente</p>
+      <p className="text-zinc-600 text-sm mt-1">Todas as submissions foram revisadas.</p>
+    </div>
+  )
+
+  return (
+    <div className="space-y-3">
+      <p className="text-xs text-zinc-500">{skills.length} skill(s) aguardando revisão — mais antigas primeiro</p>
+      {skills.map(s => (
+        <div key={s.id} className="rounded-xl border border-zinc-800 bg-zinc-900/30 overflow-hidden">
+          <div className="px-4 py-3 flex items-start justify-between gap-4">
+            <div className="flex-1 min-w-0">
+              <p className="text-white font-medium text-sm">{s.titulo}</p>
+              <div className="flex items-center gap-3 mt-1 flex-wrap">
+                <span className="text-xs text-zinc-500">por <span className="text-zinc-400">{s.autorProfile?.full_name ?? s.autorProfile?.email ?? '—'}</span></span>
+                <span className="text-xs px-1.5 py-0.5 rounded bg-violet-500/10 text-violet-400 border border-violet-500/20">{TIPOS[s.tipo] ?? s.tipo}</span>
+                {s.areas_direito?.nome && <span className="text-xs text-zinc-600">{s.areas_direito.nome}</span>}
+                <span className="text-xs text-zinc-600">{new Date(s.created_at).toLocaleDateString('pt-BR')}</span>
+              </div>
+              {s.descricao && <p className="text-xs text-zinc-500 mt-1 italic">{s.descricao}</p>}
+            </div>
+            <div className="flex items-center gap-2 flex-shrink-0 flex-wrap justify-end">
+              <button onClick={() => setDetalhes(s)} className="text-xs text-zinc-500 hover:text-white transition-colors px-2 py-1 rounded border border-zinc-800 hover:border-zinc-600">Ver detalhes</button>
+              <button onClick={() => aprovar(s.id)} className="text-xs px-3 py-1.5 rounded-lg bg-green-500/10 text-green-400 border border-green-500/20 hover:bg-green-500/20 transition-colors font-medium">Aprovar</button>
+              <button onClick={() => ativar(s.id)} className="text-xs px-3 py-1.5 rounded-lg bg-blue-500/10 text-blue-400 border border-blue-500/20 hover:bg-blue-500/20 transition-colors font-medium">Ativar</button>
+              <button onClick={() => rejeitar(s.id)} className="text-xs px-3 py-1.5 rounded-lg bg-red-500/10 text-red-400 border border-red-500/20 hover:bg-red-500/20 transition-colors font-medium">Rejeitar</button>
+            </div>
+          </div>
+        </div>
+      ))}
+      {detalhes && (
+        <div className="fixed inset-0 bg-black/70 z-50 flex items-start justify-center p-4 overflow-y-auto">
+          <div className="bg-zinc-900 rounded-xl border border-zinc-700 w-full max-w-3xl my-4">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-zinc-800">
+              <div>
+                <h3 className="text-white font-semibold">{detalhes.titulo}</h3>
+                <p className="text-xs text-zinc-500 mt-0.5">por {detalhes.autorProfile?.full_name ?? detalhes.autorProfile?.email ?? '—'} · {new Date(detalhes.created_at).toLocaleDateString('pt-BR')}</p>
+              </div>
+              <button onClick={() => setDetalhes(null)} className="text-zinc-500 hover:text-white text-2xl leading-none ml-4">×</button>
+            </div>
+            <div className="p-6 space-y-4">
+              {detalhes.descricao && <p className="text-sm text-zinc-400 italic">{detalhes.descricao}</p>}
+              <div className="flex flex-wrap gap-2">
+                <span className="px-2 py-0.5 rounded-full bg-violet-500/10 text-violet-400 text-xs border border-violet-500/20">{TIPOS[detalhes.tipo] ?? detalhes.tipo}</span>
+                {detalhes.areas_direito?.nome && <span className="px-2 py-0.5 rounded-full bg-green-500/10 text-green-400 text-xs border border-green-500/20">{detalhes.areas_direito.nome}</span>}
+                {detalhes.compatibilidade?.map((c: string) => <span key={c} className="px-2 py-0.5 rounded-full bg-zinc-800 text-zinc-400 text-xs">{c}</span>)}
+                {detalhes.tags?.map((t: string) => <span key={t} className="text-xs text-zinc-600">#{t}</span>)}
+              </div>
+              <div className="bg-zinc-950 rounded-xl border border-zinc-800 p-5">
+                <pre className="whitespace-pre-wrap text-sm text-zinc-300 leading-relaxed font-mono">{detalhes.conteudo_md}</pre>
+              </div>
+            </div>
+            <div className="px-6 py-4 border-t border-zinc-800 flex gap-3 justify-end">
+              <button onClick={() => { rejeitar(detalhes.id); setDetalhes(null) }} className="px-4 py-2 rounded-lg bg-red-500/10 text-red-400 border border-red-500/20 text-sm hover:bg-red-500/20 transition-colors">Rejeitar</button>
+              <button onClick={() => { ativar(detalhes.id); setDetalhes(null) }} className="px-4 py-2 rounded-lg bg-blue-500/10 text-blue-400 border border-blue-500/20 text-sm hover:bg-blue-500/20 transition-colors font-medium">Ativar</button>
+              <button onClick={() => { aprovar(detalhes.id); setDetalhes(null) }} className="px-4 py-2 rounded-lg bg-green-500/10 text-green-400 border border-green-500/20 text-sm hover:bg-green-500/20 transition-colors font-medium">Aprovar</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ── Skills CRUD ───────────────────────────────────────────────────────────────
+
+function SkillsAdminTab() {
+  const supabase = createClient()
+  const [data, setData] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
+  const [filterStatus, setFilterStatus] = useState('')
+  const [search, setSearch] = useState('')
+
+  const TIPOS: Record<string, string> = {
+    skill: 'Skill', persona: 'Persona', workflow: 'Workflow', instrucao: 'Instrução',
+  }
+
+  const load = useCallback(async () => {
+    setLoading(true)
+    const { data: skills } = await (supabase as any)
+      .from('skills')
+      .select('id, titulo, status, tipo, created_at, areas_direito(nome), autor_id')
+      .order('created_at', { ascending: false })
+    if (!skills) { setLoading(false); return }
+    const autorIds = Array.from(new Set<string>(skills.map((s: any) => s.autor_id).filter(Boolean)))
+    const profileMap: Record<string, any> = {}
+    if (autorIds.length > 0) {
+      const { data: profiles } = await (supabase as any).from('profiles').select('id, full_name, email').in('id', autorIds)
+      profiles?.forEach((p: any) => { profileMap[p.id] = p })
+    }
+    setData(skills.map((s: any) => ({ ...s, profiles: profileMap[s.autor_id] ?? null })))
+    setLoading(false)
+  }, [])
+
+  useEffect(() => { load() }, [load])
+
+  const updateStatus = async (id: string, status: string) => {
+    await (supabase as any).from('skills').update({ status }).eq('id', id)
+    setData(prev => prev.map(s => s.id === id ? { ...s, status } : s))
+  }
+  const toggleDestaque = async (id: string, current: boolean) => {
+    await (supabase as any).from('skills').update({ destaque: !current }).eq('id', id)
+    setData(prev => prev.map(s => s.id === id ? { ...s, destaque: !current } : s))
+  }
+  const deletar = async (id: string) => {
+    if (!confirm('Deletar esta skill?')) return
+    await (supabase as any).from('skills').delete().eq('id', id)
+    setData(prev => prev.filter(s => s.id !== id))
+  }
+
+  const filtered = data.filter(s => {
+    if (filterStatus && s.status !== filterStatus) return false
+    if (search && !s.titulo.toLowerCase().includes(search.toLowerCase())) return false
+    return true
+  })
+
+  if (loading) return <div className="text-center py-16 text-zinc-500 text-sm">Carregando...</div>
+
+  return (
+    <div>
+      <div className="flex items-center gap-3 mb-4 flex-wrap">
+        <span className="text-xs text-zinc-500">{filtered.length} skills</span>
+        <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Buscar..." className="px-2.5 py-1.5 rounded-lg bg-zinc-900 border border-zinc-800 text-zinc-300 text-xs focus:outline-none w-40" />
+        <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)} className="px-2.5 py-1.5 rounded-lg bg-zinc-900 border border-zinc-800 text-zinc-300 text-xs focus:outline-none">
+          <option value="">Todos os status</option>
+          <option value="ativo">Ativos</option>
+          <option value="aprovado">Aprovados</option>
+          <option value="pendente">Pendentes</option>
+          <option value="inativo">Inativos</option>
+        </select>
+      </div>
+      <div className="space-y-2">
+        {filtered.map(s => (
+          <div key={s.id} className="flex items-center gap-3 p-3 rounded-xl border border-zinc-800 bg-zinc-900/30 flex-wrap">
+            <div className="flex-1 min-w-0">
+              <p className="text-sm text-white font-medium truncate">{s.titulo}</p>
+              <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                <span className="text-xs text-zinc-600">{s.profiles?.full_name ?? s.profiles?.email ?? '—'}</span>
+                <span className="text-xs px-1.5 py-0.5 rounded bg-violet-500/10 text-violet-400 border border-violet-500/20">{TIPOS[s.tipo] ?? s.tipo}</span>
+                {s.areas_direito?.nome && <span className="text-xs text-zinc-600">{s.areas_direito.nome}</span>}
+                <span className="text-xs text-zinc-700">{new Date(s.created_at).toLocaleDateString('pt-BR')}</span>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 flex-shrink-0 flex-wrap">
+              <button onClick={() => toggleDestaque(s.id, s.destaque)} title="Toggle destaque"
+                className={`text-xs px-2 py-1 rounded border transition-colors ${s.destaque ? 'border-yellow-500/30 bg-yellow-500/10 text-yellow-400' : 'border-zinc-700 text-zinc-600 hover:text-yellow-400'}`}>
+                ★
+              </button>
+              <select value={s.status} onChange={e => updateStatus(s.id, e.target.value)}
+                className="px-2 py-1 rounded bg-zinc-900 border border-zinc-800 text-zinc-300 text-xs focus:outline-none">
+                <option value="ativo">ativo</option>
+                <option value="aprovado">aprovado</option>
+                <option value="pendente">pendente</option>
+                <option value="inativo">inativo</option>
+              </select>
+              <button onClick={() => deletar(s.id)} className="text-xs text-zinc-600 hover:text-red-400 transition-colors px-2 py-1">✕</button>
+            </div>
+          </div>
+        ))}
+      </div>
     </div>
   )
 }

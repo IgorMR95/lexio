@@ -37,6 +37,28 @@ export default async function SkillsPage() {
       .limit(20),
   ])
 
+  // Usuários destaque: top autores por número de skills publicadas
+  const autorSkillCount: Record<string, number> = {}
+  ;(skills ?? []).forEach((s: any) => {
+    if (s.autor_id) autorSkillCount[s.autor_id] = (autorSkillCount[s.autor_id] ?? 0) + 1
+  })
+  const topAutorIds = Object.entries(autorSkillCount)
+    .sort(([, a], [, b]) => b - a)
+    .slice(0, 12)
+    .map(([id]) => id)
+
+  let usuariosDestaque: any[] = []
+  if (topAutorIds.length > 0) {
+    const { data: topProfiles } = await (supabase as any)
+      .from('profiles')
+      .select('id, full_name, email, bio, avatar_url')
+      .in('id', topAutorIds)
+    usuariosDestaque = (topProfiles ?? []).map((p: any) => ({
+      ...p,
+      total_skills: autorSkillCount[p.id] ?? 0,
+    })).sort((a: any, b: any) => b.total_skills - a.total_skills)
+  }
+
   // Autores
   const autorIds = Array.from(new Set((skills ?? []).map((s: any) => s.autor_id).filter(Boolean)))
   const profileMap: Record<string, { full_name: string | null; email: string | null }> = {}
@@ -77,6 +99,7 @@ export default async function SkillsPage() {
       topSemana={topSemana ?? []}
       topAllTime={topAllTime}
       destaques={destaques ?? []}
+      usuariosDestaque={usuariosDestaque}
     />
   )
 }

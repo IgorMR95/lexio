@@ -16,6 +16,7 @@ const TABS = [
   { id: 'dashboard', label: 'Dashboard' },
   { id: 'perfil', label: 'Meu Perfil' },
   { id: 'prompts', label: 'Meus Prompts' },
+  { id: 'skills', label: 'Minhas Skills' },
   { id: 'grupos', label: 'Grupos' },
 ]
 
@@ -61,6 +62,9 @@ export function PerfilClient({ user, profile, meusPrompts, meusGrupos }: Props) 
       {activeTab === 'prompts' && (
         <MeusPromptsTab prompts={meusPrompts} />
       )}
+      {activeTab === 'skills' && (
+        <MinhasSkillsTab userId={user.id} />
+      )}
       {activeTab === 'grupos' && (
         <GruposTab userId={user.id} meusGrupos={meusGrupos} />
       )}
@@ -86,12 +90,20 @@ function DashboardTab({ prompts, profile }: { prompts: any[]; profile: any }) {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <p className="text-zinc-400 text-sm">Olá, <span className="text-white font-medium">{profile?.full_name ?? 'usuário'}</span></p>
-        <Link href="/dashboard/novo-prompt" className="flex items-center gap-2 px-4 py-2 rounded-lg bg-white text-zinc-950 font-semibold text-sm hover:bg-zinc-100 transition-colors">
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-          </svg>
-          Novo prompt
-        </Link>
+        <div className="flex items-center gap-2">
+          <Link href="/dashboard/novo-prompt" className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-white text-zinc-950 font-semibold text-sm hover:bg-zinc-100 transition-colors">
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+            </svg>
+            Novo prompt
+          </Link>
+          <Link href="/dashboard/nova-skill" className="flex items-center gap-1.5 px-3 py-2 rounded-lg border border-zinc-700 text-zinc-300 font-medium text-sm hover:border-violet-500/50 hover:text-violet-300 transition-colors">
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
+            </svg>
+            Nova skill
+          </Link>
+        </div>
       </div>
 
       <div className="grid grid-cols-3 gap-4">
@@ -274,6 +286,66 @@ function MeusPromptsTab({ prompts }: { prompts: any[] }) {
           <div className="flex items-center gap-3 ml-4">
             <span className={`px-2 py-0.5 rounded-full text-xs border ${statusMap[p.status] ?? statusMap.inativo}`}>{p.status}</span>
             <Link href={`/prompts/${p.id}`} className="text-xs text-zinc-500 hover:text-white transition-colors">Ver →</Link>
+          </div>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+// ── Minhas Skills ─────────────────────────────────────────────────────────────
+
+function MinhasSkillsTab({ userId }: { userId: string }) {
+  const supabase = createClient()
+  const [skills, setSkills] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
+
+  const TIPOS: Record<string, string> = {
+    skill: 'Skill', persona: 'Persona', workflow: 'Workflow', instrucao: 'Instrução',
+  }
+  const statusMap: Record<string, string> = {
+    aprovado: 'bg-green-500/10 text-green-400 border-green-500/20',
+    ativo: 'bg-green-500/10 text-green-400 border-green-500/20',
+    pendente: 'bg-amber-500/10 text-amber-400 border-amber-500/20',
+    inativo: 'bg-zinc-500/10 text-zinc-400 border-zinc-500/20',
+  }
+
+  useEffect(() => {
+    ;(supabase as any)
+      .from('skills')
+      .select('id, titulo, tipo, status, created_at, areas_direito(nome)')
+      .eq('autor_id', userId)
+      .order('created_at', { ascending: false })
+      .then(({ data }: any) => { setSkills(data ?? []); setLoading(false) })
+  }, [userId])
+
+  if (loading) return <div className="text-center py-16 text-zinc-500 text-sm">Carregando...</div>
+
+  if (!skills.length) {
+    return (
+      <div className="text-center py-16 border border-dashed border-zinc-800 rounded-xl">
+        <p className="text-zinc-500 mb-3">Você ainda não compartilhou nenhuma skill</p>
+        <Link href="/dashboard/nova-skill" className="text-sm text-white hover:underline">Compartilhar minha primeira skill →</Link>
+      </div>
+    )
+  }
+
+  return (
+    <div className="space-y-2">
+      <p className="text-xs text-zinc-500 mb-4">{skills.length} skill(s) compartilhada(s)</p>
+      {skills.map(s => (
+        <div key={s.id} className="flex items-center justify-between p-4 rounded-xl border border-zinc-800 bg-zinc-900/30 hover:border-zinc-700 transition-colors">
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-medium text-white truncate">{s.titulo}</p>
+            <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+              <span className="text-xs px-1.5 py-0.5 rounded bg-violet-500/10 text-violet-400 border border-violet-500/20">{TIPOS[s.tipo] ?? s.tipo}</span>
+              {s.areas_direito?.nome && <span className="text-xs text-zinc-600">{s.areas_direito.nome}</span>}
+              <span className="text-xs text-zinc-600">{new Date(s.created_at).toLocaleDateString('pt-BR')}</span>
+            </div>
+          </div>
+          <div className="flex items-center gap-3 ml-4">
+            <span className={`px-2 py-0.5 rounded-full text-xs border ${statusMap[s.status] ?? statusMap.inativo}`}>{s.status}</span>
+            <Link href={`/skills/${s.id}`} className="text-xs text-zinc-500 hover:text-white transition-colors">Ver →</Link>
           </div>
         </div>
       ))}

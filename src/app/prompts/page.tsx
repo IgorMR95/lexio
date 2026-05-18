@@ -6,27 +6,21 @@ export const revalidate = 60
 export default async function PromptsPage() {
   const supabase = createClient()
 
-  // Batch 1 — dados de listagem + metadados (tudo em paralelo)
+  // Batch 1 — metadados de filtros + rankings (sem buscar os prompts em si)
   const [
     { data: categorias },
     { data: subcategorias },
     { data: subniveis },
     { data: areas },
-    { data: prompts },
     { data: topSemana },
     { data: topAllTimeRaw },
     { data: destaques },
+    { count: totalCount },
   ] = await Promise.all([
     supabase.from('categorias_principais').select('*').eq('ativo', true).order('ordem'),
     supabase.from('subcategorias').select('*').eq('ativo', true).order('ordem'),
     supabase.from('subniveis').select('*').eq('ativo', true).order('ordem'),
     supabase.from('areas_direito').select('*').eq('ativo', true).order('ordem'),
-    // Sem texto_completo — campo pesado só necessário na página individual
-    supabase
-      .from('prompts')
-      .select('id, titulo, descricao_curta, categoria_id, subcategoria_id, subnivel_id, area_direito_id, tags, autor_id, status, internacional, idioma, destaque, created_at, categorias_principais(id, nome, slug), subcategorias(id, nome, slug), subniveis(id, nome, slug), areas_direito(id, nome, slug)')
-      .in('status', ['ativo', 'aprovado'])
-      .order('created_at', { ascending: false }),
     (supabase as any)
       .from('destaques_semana')
       .select('*, areas_direito(nome)')
@@ -43,9 +37,13 @@ export default async function PromptsPage() {
       .in('status', ['ativo', 'aprovado'])
       .order('created_at', { ascending: false })
       .limit(20),
+    supabase
+      .from('prompts')
+      .select('*', { count: 'exact', head: true })
+      .in('status', ['ativo', 'aprovado']),
   ])
 
-  // Batch 2 — rankings via views SQL (tudo em paralelo, sem full scans em JS)
+  // Batch 2 — rankings via views SQL
   const [
     { data: rankingAprovados },
     { data: rankingDestaques },
@@ -73,7 +71,6 @@ export default async function PromptsPage() {
       .select('autor_id, prompts_semana')
       .order('prompts_semana', { ascending: false })
       .limit(5),
-    // top all-time: busca dados dos prompts só para os 20 IDs já conhecidos
     topAllTimeRaw && topAllTimeRaw.length > 0
       ? (supabase as any)
           .from('prompts')
@@ -92,29 +89,22 @@ export default async function PromptsPage() {
       .sort((a: any, b: any) => b.total_votos - a.total_votos)
   }
 
-  // Buscar perfis de autores (dois grupos em paralelo: listagem + rankings)
-  const promptAutorIds = Array.from(new Set((prompts ?? []).map((p: any) => p.autor_id).filter(Boolean)))
+  // Perfis dos autores dos rankings (sem os prompts da listagem)
   const rankingAutorIds = Array.from(new Set([
     ...(rankingAprovados ?? []).map((r: any) => r.autor_id),
     ...(rankingDestaques ?? []).map((r: any) => r.autor_id),
     ...(rankingVotos ?? []).map((r: any) => r.autor_id),
     ...(rankingSemana ?? []).map((r: any) => r.autor_id),
   ]))
-  const allAutorIds = Array.from(new Set([...promptAutorIds, ...rankingAutorIds]))
 
   const profileMap: Record<string, any> = {}
-  if (allAutorIds.length > 0) {
+  if (rankingAutorIds.length > 0) {
     const { data: profiles } = await (supabase as any)
       .from('profiles')
       .select('id, full_name, email, avatar_url, instituicao')
-      .in('id', allAutorIds)
+      .in('id', rankingAutorIds)
     ;(profiles ?? []).forEach((p: any) => { profileMap[p.id] = p })
   }
-
-  const promptsWithAuthor = (prompts ?? []).map((p: any) => ({
-    ...p,
-    profiles: profileMap[p.autor_id] ? { full_name: profileMap[p.autor_id].full_name, email: profileMap[p.autor_id].email } : null,
-  }))
 
   const buildRanking = (rows: any[], countField: string) =>
     (rows ?? []).map((r: any) => ({
@@ -135,7 +125,7 @@ export default async function PromptsPage() {
 
   return (
     <PromptsClient
-      initialPrompts={promptsWithAuthor}
+      totalCount={totalCount ?? 0}
       categorias={categorias ?? []}
       subcategorias={subcategorias ?? []}
       subniveis={subniveis ?? []}

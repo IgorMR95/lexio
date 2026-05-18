@@ -25,7 +25,7 @@ const TABS = [
   { id: 'revisao', label: 'Revisão' },
   { id: 'prompts', label: 'Prompts' },
   { id: 'skills', label: 'Skills MD' },
-  { id: 'ferramentas', label: 'Ranking IAs' },
+  { id: 'ferramentas', label: 'Ranking de IAs' },
   { id: 'usuarios', label: 'Usuários' },
   { id: 'estrutura', label: 'Estrutura' },
   { id: 'areas', label: 'Áreas' },
@@ -1008,26 +1008,65 @@ function PromptsTab({ areas, categorias, subcategorias }: { areas: Area[]; categ
 
 // ── Ferramentas / Ranking IAs ─────────────────────────────────────────────────
 
+const TIPO_LABELS: Record<string, string> = {
+  llm: 'Modelo de IA', app: 'Aplicativo', extensao: 'Extensão', plataforma: 'Plataforma', outro: 'Outro',
+}
+
+const FORM_VAZIO = { nome: '', descricao: '', url: '', tipo: 'llm', grupo: 'modelo', status: 'ativo', destaque: false, observacoes: '' }
+
 function FeramentasAdminTab() {
   const supabase = createClient()
   const [ferramentas, setFerramentas] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
-  const [filterStatus, setFilterStatus] = useState('pendente')
+  const [filterStatus, setFilterStatus] = useState('')
+  const [filterGrupo, setFilterGrupo] = useState('')
+  const [editando, setEditando] = useState<any | null>(null)
+  const [criando, setCriando] = useState(false)
+  const [form, setForm] = useState<typeof FORM_VAZIO>(FORM_VAZIO)
+  const [saving, setSaving] = useState(false)
+  const [erro, setErro] = useState('')
 
   const load = useCallback(async () => {
     setLoading(true)
-    const q = (supabase as any).from('ferramentas').select('*').order('created_at', { ascending: false })
-    if (filterStatus) q.eq('status', filterStatus)
-    const { data } = await q
+    const { data } = await (supabase as any)
+      .from('ferramentas').select('*').order('grupo').order('nome')
     setFerramentas(data ?? [])
     setLoading(false)
-  }, [filterStatus])
+  }, [])
 
   useEffect(() => { load() }, [load])
 
-  const setStatus = async (id: string, status: string) => {
-    await (supabase as any).from('ferramentas').update({ status }).eq('id', id)
+  const abrirEditar = (f: any) => {
+    setForm({ nome: f.nome, descricao: f.descricao ?? '', url: f.url ?? '', tipo: f.tipo, grupo: f.grupo, status: f.status, destaque: f.destaque ?? false, observacoes: f.observacoes ?? '' })
+    setEditando(f)
+    setCriando(false)
+    setErro('')
+  }
+
+  const abrirCriar = () => {
+    setForm(FORM_VAZIO)
+    setCriando(true)
+    setEditando(null)
+    setErro('')
+  }
+
+  const fechar = () => { setEditando(null); setCriando(false); setErro('') }
+
+  const salvar = async () => {
+    if (!form.nome.trim()) { setErro('Nome é obrigatório.'); return }
+    setSaving(true)
+    setErro('')
+    const payload = { nome: form.nome.trim(), descricao: form.descricao || null, url: form.url || null, tipo: form.tipo, grupo: form.grupo, status: form.status, destaque: form.destaque, observacoes: form.observacoes || null }
+    if (criando) {
+      const { error } = await (supabase as any).from('ferramentas').insert(payload)
+      if (error) { setErro(error.message); setSaving(false); return }
+    } else if (editando) {
+      const { error } = await (supabase as any).from('ferramentas').update(payload).eq('id', editando.id)
+      if (error) { setErro(error.message); setSaving(false); return }
+    }
+    setSaving(false)
+    fechar()
     load()
   }
 
@@ -1036,94 +1075,248 @@ function FeramentasAdminTab() {
     load()
   }
 
-  const del = async (id: string) => {
-    if (!confirm('Remover ferramenta?')) return
+  const setStatus = async (id: string, status: string) => {
+    await (supabase as any).from('ferramentas').update({ status }).eq('id', id)
+    load()
+  }
+
+  const del = async (id: string, nome: string) => {
+    if (!confirm(`Excluir "${nome}"? Esta ação não pode ser desfeita e removerá todos os votos associados.`)) return
+    await (supabase as any).from('ferramenta_votos').delete().eq('ferramenta_id', id)
     await (supabase as any).from('ferramentas').delete().eq('id', id)
     load()
   }
 
-  const TIPO_LABELS: Record<string, string> = {
-    llm: 'Modelo de IA', app: 'Aplicativo', extensao: 'Extensão', plataforma: 'Plataforma', outro: 'Outro',
+  const filtered = ferramentas.filter(f => {
+    if (filterStatus && f.status !== filterStatus) return false
+    if (filterGrupo && f.grupo !== filterGrupo) return false
+    if (search && !f.nome.toLowerCase().includes(search.toLowerCase())) return false
+    return true
+  })
+
+  const modelos = filtered.filter(f => f.grupo === 'modelo')
+  const ferramentas_ = filtered.filter(f => f.grupo === 'ferramenta')
+
+  // Formulário inline (criar ou editar)
+  if (criando || editando) {
+    return (
+      <div className="space-y-4 max-w-xl">
+        <div className="flex items-center justify-between">
+          <h3 className="text-base font-semibold text-white">{criando ? 'Nova ferramenta / modelo' : `Editar: ${editando.nome}`}</h3>
+          <button onClick={fechar} className="text-xs text-zinc-500 hover:text-white transition-colors">Cancelar</button>
+        </div>
+
+        <div className="space-y-3 p-5 rounded-xl border border-zinc-800 bg-zinc-900/30">
+          {/* Nome */}
+          <div>
+            <label className="block text-xs text-zinc-500 mb-1">Nome *</label>
+            <input value={form.nome} onChange={e => setForm(p => ({ ...p, nome: e.target.value }))}
+              className="w-full px-3 py-2 rounded-lg bg-zinc-950 border border-zinc-800 text-white text-sm focus:outline-none focus:border-zinc-600" />
+          </div>
+
+          {/* Grupo + Tipo lado a lado */}
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs text-zinc-500 mb-1">Grupo</label>
+              <select value={form.grupo} onChange={e => setForm(p => ({ ...p, grupo: e.target.value }))}
+                className="w-full px-3 py-2 rounded-lg bg-zinc-950 border border-zinc-800 text-zinc-300 text-sm focus:outline-none">
+                <option value="modelo">Modelo de IA</option>
+                <option value="ferramenta">Ferramenta</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs text-zinc-500 mb-1">Tipo</label>
+              <select value={form.tipo} onChange={e => setForm(p => ({ ...p, tipo: e.target.value }))}
+                className="w-full px-3 py-2 rounded-lg bg-zinc-950 border border-zinc-800 text-zinc-300 text-sm focus:outline-none">
+                <option value="llm">Modelo de linguagem</option>
+                <option value="app">Aplicativo</option>
+                <option value="extensao">Extensão</option>
+                <option value="plataforma">Plataforma</option>
+                <option value="outro">Outro</option>
+              </select>
+            </div>
+          </div>
+
+          {/* URL */}
+          <div>
+            <label className="block text-xs text-zinc-500 mb-1">URL (opcional)</label>
+            <input value={form.url} onChange={e => setForm(p => ({ ...p, url: e.target.value }))}
+              placeholder="https://..."
+              className="w-full px-3 py-2 rounded-lg bg-zinc-950 border border-zinc-800 text-white text-sm focus:outline-none focus:border-zinc-600" />
+          </div>
+
+          {/* Descrição */}
+          <div>
+            <label className="block text-xs text-zinc-500 mb-1">Descrição</label>
+            <textarea value={form.descricao} onChange={e => setForm(p => ({ ...p, descricao: e.target.value }))}
+              rows={3}
+              className="w-full px-3 py-2 rounded-lg bg-zinc-950 border border-zinc-800 text-white text-sm focus:outline-none focus:border-zinc-600 resize-none" />
+          </div>
+
+          {/* Status + Destaque */}
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs text-zinc-500 mb-1">Status</label>
+              <select value={form.status} onChange={e => setForm(p => ({ ...p, status: e.target.value }))}
+                className="w-full px-3 py-2 rounded-lg bg-zinc-950 border border-zinc-800 text-zinc-300 text-sm focus:outline-none">
+                <option value="ativo">Ativo</option>
+                <option value="pendente">Pendente</option>
+                <option value="rejeitado">Rejeitado</option>
+              </select>
+            </div>
+            <div className="flex items-end pb-1">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input type="checkbox" checked={form.destaque} onChange={e => setForm(p => ({ ...p, destaque: e.target.checked }))}
+                  className="w-4 h-4 accent-yellow-400" />
+                <span className="text-sm text-zinc-400">Marcar como destaque</span>
+              </label>
+            </div>
+          </div>
+
+          {/* Observações */}
+          <div>
+            <label className="block text-xs text-zinc-500 mb-1">Observações internas (não visível ao público)</label>
+            <textarea value={form.observacoes} onChange={e => setForm(p => ({ ...p, observacoes: e.target.value }))}
+              rows={2}
+              className="w-full px-3 py-2 rounded-lg bg-zinc-950 border border-zinc-800 text-white text-sm focus:outline-none focus:border-zinc-600 resize-none" />
+          </div>
+
+          {erro && <p className="text-xs text-red-400">{erro}</p>}
+
+          <div className="flex gap-2 pt-1">
+            <button onClick={salvar} disabled={saving}
+              className="flex-1 py-2.5 rounded-lg bg-white text-zinc-950 font-semibold text-sm hover:bg-zinc-100 transition-colors disabled:opacity-50">
+              {saving ? 'Salvando…' : criando ? 'Cadastrar' : 'Salvar alterações'}
+            </button>
+            <button onClick={fechar} className="px-4 py-2.5 rounded-lg border border-zinc-700 text-zinc-400 text-sm hover:text-white transition-colors">
+              Cancelar
+            </button>
+          </div>
+        </div>
+      </div>
+    )
   }
 
-  const filtered = ferramentas.filter(f =>
-    !search || f.nome.toLowerCase().includes(search.toLowerCase())
-  )
-
   return (
-    <div className="space-y-4">
+    <div className="space-y-5">
+      {/* Barra de ações */}
       <div className="flex flex-col sm:flex-row gap-3">
         <input
-          type="text" placeholder="Buscar ferramenta..."
+          type="text" placeholder="Buscar por nome…"
           value={search} onChange={e => setSearch(e.target.value)}
           className="flex-1 px-3 py-2 rounded-lg bg-zinc-900 border border-zinc-800 text-white text-sm focus:outline-none focus:border-zinc-600"
         />
+        <select value={filterGrupo} onChange={e => setFilterGrupo(e.target.value)}
+          className="px-3 py-2 rounded-lg bg-zinc-900 border border-zinc-800 text-zinc-300 text-sm focus:outline-none">
+          <option value="">Todos os grupos</option>
+          <option value="modelo">Modelos de IA</option>
+          <option value="ferramenta">Ferramentas</option>
+        </select>
         <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)}
           className="px-3 py-2 rounded-lg bg-zinc-900 border border-zinc-800 text-zinc-300 text-sm focus:outline-none">
-          <option value="">Todos</option>
-          <option value="pendente">Pendentes</option>
+          <option value="">Todos os status</option>
           <option value="ativo">Ativos</option>
+          <option value="pendente">Pendentes</option>
           <option value="rejeitado">Rejeitados</option>
         </select>
+        <button onClick={abrirCriar}
+          className="shrink-0 px-4 py-2 rounded-lg bg-white text-zinc-950 font-semibold text-sm hover:bg-zinc-100 transition-colors">
+          + Novo
+        </button>
       </div>
 
       {loading ? (
-        <p className="text-zinc-500 text-sm py-8 text-center">Carregando...</p>
+        <p className="text-zinc-500 text-sm py-8 text-center">Carregando…</p>
       ) : filtered.length === 0 ? (
         <p className="text-zinc-500 text-sm py-8 text-center">Nenhuma ferramenta encontrada.</p>
       ) : (
-        <div className="space-y-3">
-          {filtered.map(f => (
-            <div key={f.id} className="p-4 rounded-xl border border-zinc-800 bg-zinc-900/30 space-y-3">
-              <div className="flex items-start justify-between gap-3 flex-wrap">
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 flex-wrap mb-1">
-                    <p className="text-sm font-semibold text-white">{f.nome}</p>
-                    <span className="text-xs px-1.5 py-0.5 rounded-full bg-zinc-800 text-zinc-400 border border-zinc-700">
-                      {TIPO_LABELS[f.tipo] ?? f.tipo}
-                    </span>
-                    {f.destaque && <span className="text-xs text-yellow-400">★ Destaque</span>}
-                    <span className={`text-xs px-1.5 py-0.5 rounded-full border ${
-                      f.status === 'ativo' ? 'bg-green-500/10 text-green-400 border-green-500/20' :
-                      f.status === 'pendente' ? 'bg-amber-500/10 text-amber-400 border-amber-500/20' :
-                      'bg-red-500/10 text-red-400 border-red-500/20'
-                    }`}>{f.status}</span>
-                  </div>
-                  {f.descricao && <p className="text-xs text-zinc-500 line-clamp-2">{f.descricao}</p>}
-                  {f.url && <a href={f.url} target="_blank" rel="noopener noreferrer" className="text-xs text-zinc-600 hover:text-zinc-400 transition-colors">{f.url}</a>}
-                </div>
-                <div className="flex items-center gap-2 flex-shrink-0 flex-wrap">
-                  <button onClick={() => toggleDestaque(f.id, f.destaque)}
-                    className={`text-xs px-2.5 py-1.5 rounded-lg border transition-colors ${f.destaque ? 'border-yellow-500/40 text-yellow-400 bg-yellow-500/10' : 'border-zinc-700 text-zinc-500 hover:text-yellow-400'}`}>
-                    {f.destaque ? '★ Destaque' : '☆ Destacar'}
-                  </button>
-                  {f.status !== 'ativo' && (
-                    <button onClick={() => setStatus(f.id, 'ativo')}
-                      className="text-xs px-2.5 py-1.5 rounded-lg border border-green-500/30 text-green-400 bg-green-500/10 hover:bg-green-500/20 transition-colors">
-                      Aprovar
-                    </button>
-                  )}
-                  {f.status !== 'rejeitado' && (
-                    <button onClick={() => setStatus(f.id, 'rejeitado')}
-                      className="text-xs px-2.5 py-1.5 rounded-lg border border-red-500/30 text-red-400 hover:bg-red-500/10 transition-colors">
-                      Rejeitar
-                    </button>
-                  )}
-                  <button onClick={() => del(f.id)}
-                    className="text-xs px-2.5 py-1.5 rounded-lg border border-zinc-800 text-zinc-600 hover:text-red-400 hover:border-red-500/30 transition-colors">
-                    Excluir
-                  </button>
-                </div>
+        <div className="space-y-6">
+          {modelos.length > 0 && (
+            <div>
+              <p className="text-[11px] font-semibold text-zinc-500 uppercase tracking-widest mb-2">Modelos de IA ({modelos.length})</p>
+              <div className="rounded-xl border border-zinc-800 divide-y divide-zinc-800/60 overflow-hidden">
+                {modelos.map(f => <FerramentaRow key={f.id} f={f} onEditar={abrirEditar} onDestaque={toggleDestaque} onStatus={setStatus} onDel={del} />)}
               </div>
-              {f.observacoes && (
-                <div className="px-3 py-2 rounded-lg bg-zinc-950/50 border border-zinc-800/50">
-                  <p className="text-xs text-zinc-500"><span className="text-zinc-400">Obs:</span> {f.observacoes}</p>
-                </div>
-              )}
             </div>
-          ))}
+          )}
+          {ferramentas_.length > 0 && (
+            <div>
+              <p className="text-[11px] font-semibold text-zinc-500 uppercase tracking-widest mb-2">Ferramentas ({ferramentas_.length})</p>
+              <div className="rounded-xl border border-zinc-800 divide-y divide-zinc-800/60 overflow-hidden">
+                {ferramentas_.map(f => <FerramentaRow key={f.id} f={f} onEditar={abrirEditar} onDestaque={toggleDestaque} onStatus={setStatus} onDel={del} />)}
+              </div>
+            </div>
+          )}
         </div>
       )}
+    </div>
+  )
+}
+
+function FerramentaRow({ f, onEditar, onDestaque, onStatus, onDel }: {
+  f: any
+  onEditar: (f: any) => void
+  onDestaque: (id: string, destaque: boolean) => void
+  onStatus: (id: string, status: string) => void
+  onDel: (id: string, nome: string) => void
+}) {
+  return (
+    <div className="flex items-center gap-3 px-4 py-3 bg-zinc-900/20 hover:bg-zinc-900/40 transition-colors">
+      {/* Avatar */}
+      <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 font-bold text-xs border ${
+        f.grupo === 'modelo' ? 'bg-violet-500/15 border-violet-500/20 text-violet-300' : 'bg-blue-500/15 border-blue-500/20 text-blue-300'
+      }`}>{f.nome[0]?.toUpperCase()}</div>
+
+      {/* Info */}
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-1.5 flex-wrap">
+          <span className="text-sm font-medium text-white truncate">{f.nome}</span>
+          <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-zinc-800 text-zinc-500 border border-zinc-700/50 shrink-0">
+            {TIPO_LABELS[f.tipo] ?? f.tipo}
+          </span>
+          {f.destaque && <span className="text-[10px] text-yellow-400 shrink-0">★</span>}
+          <span className={`text-[10px] px-1.5 py-0.5 rounded-full border shrink-0 ${
+            f.status === 'ativo' ? 'bg-green-500/10 text-green-400 border-green-500/20' :
+            f.status === 'pendente' ? 'bg-amber-500/10 text-amber-400 border-amber-500/20' :
+            'bg-red-500/10 text-red-400 border-red-500/20'
+          }`}>{f.status}</span>
+        </div>
+        {f.url && (
+          <a href={f.url} target="_blank" rel="noopener noreferrer" className="text-[11px] text-zinc-700 hover:text-zinc-400 transition-colors truncate block">
+            {f.url.replace(/^https?:\/\//, '')}
+          </a>
+        )}
+      </div>
+
+      {/* Ações */}
+      <div className="flex items-center gap-1 shrink-0">
+        <button onClick={() => onEditar(f)}
+          className="text-xs px-2.5 py-1.5 rounded-lg border border-zinc-700 text-zinc-400 hover:text-white hover:border-zinc-500 transition-colors">
+          Editar
+        </button>
+        <button onClick={() => onDestaque(f.id, f.destaque)}
+          className={`text-xs px-2 py-1.5 rounded-lg border transition-colors ${f.destaque ? 'border-yellow-500/40 text-yellow-400' : 'border-zinc-800 text-zinc-600 hover:text-yellow-400'}`}
+          title={f.destaque ? 'Remover destaque' : 'Marcar destaque'}>
+          ★
+        </button>
+        {f.status !== 'ativo' && (
+          <button onClick={() => onStatus(f.id, 'ativo')}
+            className="text-xs px-2.5 py-1.5 rounded-lg border border-green-500/30 text-green-400 hover:bg-green-500/10 transition-colors">
+            Ativar
+          </button>
+        )}
+        {f.status === 'ativo' && (
+          <button onClick={() => onStatus(f.id, 'pendente')}
+            className="text-xs px-2.5 py-1.5 rounded-lg border border-zinc-800 text-zinc-600 hover:text-amber-400 hover:border-amber-500/30 transition-colors">
+            Desativar
+          </button>
+        )}
+        <button onClick={() => onDel(f.id, f.nome)}
+          className="text-xs px-2 py-1.5 rounded-lg border border-zinc-800 text-zinc-700 hover:text-red-400 hover:border-red-500/30 transition-colors"
+          title="Excluir">
+          ✕
+        </button>
+      </div>
     </div>
   )
 }

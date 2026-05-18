@@ -142,12 +142,12 @@ export function Navbar() {
               )}
             </div>
 
-            {/* Ranking de IAs */}
+            {/* Ranking de IAs Jurídicas */}
             <Link
               href="/ranking"
               className={`text-sm transition-colors ${pathname.startsWith('/ranking') ? 'text-white font-medium' : 'text-zinc-400 hover:text-white'}`}
             >
-              Ranking de IAs
+              Ranking de IAs Jurídicas
             </Link>
 
             {/* Academy */}
@@ -290,7 +290,7 @@ export function Navbar() {
             </Link>
             <div className="border-t border-zinc-800/50 my-1" />
             <Link href="/ranking" onClick={() => setMenuOpen(false)} className={`text-sm py-2 px-2 rounded-lg transition-colors ${pathname.startsWith('/ranking') ? 'text-white bg-zinc-900' : 'text-zinc-400 hover:text-white'}`}>
-              Ranking de IAs
+              Ranking de IAs Jurídicas
             </Link>
             <Link href="/academy" onClick={() => setMenuOpen(false)} className={`text-sm py-2 px-2 rounded-lg transition-colors ${pathname.startsWith('/academy') ? 'text-white bg-zinc-900' : 'text-zinc-400 hover:text-white'}`}>
               Academy

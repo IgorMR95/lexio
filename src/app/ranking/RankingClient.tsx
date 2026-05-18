@@ -169,7 +169,7 @@ export function RankingClient({
 
       {/* Header */}
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-white mb-1">Ranking de IAs no Direito</h1>
+        <h1 className="text-2xl font-bold text-white mb-1">Ranking de IAs Jurídicas</h1>
         <p className="text-sm text-zinc-500">
           Avaliadas por advogados, magistrados, promotores e defensores · <span className="text-zinc-400">{totalVotos} votos registrados</span>
         </p>
@@ -361,6 +361,7 @@ export function RankingClient({
               votosSemana={votosSemana}
               votosMes={votosMes}
               votosDiario={votosDiario}
+              categoriaNomeAtiva={categoriaNomeAtiva}
             />
           )}
         </div>
@@ -518,6 +519,7 @@ function AbaGraficos({
   votosSemana,
   votosMes,
   votosDiario,
+  categoriaNomeAtiva,
 }: {
   ferramentas: Ferramenta[]
   categorias: Categoria[]
@@ -527,9 +529,8 @@ function AbaGraficos({
   votosSemana: VotoContagem[]
   votosMes: VotoContagem[]
   votosDiario: VotoDiario[]
+  categoriaNomeAtiva: string
 }) {
-  const [graficoCat, setGraficoCat] = useState(categoriaAtiva)
-
   const ferrsGrupo = ferramentas.filter(f => f.grupo === grupoAtivo)
 
   // Top 3 por categoria — geral
@@ -547,19 +548,19 @@ function AbaGraficos({
     }).filter(r => r.itens.length > 0)
   }, [ferrsGrupo, categorias, votosGeral])
 
-  // Comparativo geral / mês / semana para a categoria selecionada
+  // Comparativo geral / mês / semana para a categoria selecionada na sidebar
   const comparativo = useMemo(() => {
     return ferrsGrupo
       .map(f => ({
         ...f,
-        geral:  votosGeral.find(v => v.ferramenta_id === f.id && v.categoria_uso_id === graficoCat)?.total_votos ?? 0,
-        mes:    votosMes.find(v => v.ferramenta_id === f.id && v.categoria_uso_id === graficoCat)?.total_votos ?? 0,
-        semana: votosSemana.find(v => v.ferramenta_id === f.id && v.categoria_uso_id === graficoCat)?.total_votos ?? 0,
+        geral:  votosGeral.find(v => v.ferramenta_id === f.id && v.categoria_uso_id === categoriaAtiva)?.total_votos ?? 0,
+        mes:    votosMes.find(v => v.ferramenta_id === f.id && v.categoria_uso_id === categoriaAtiva)?.total_votos ?? 0,
+        semana: votosSemana.find(v => v.ferramenta_id === f.id && v.categoria_uso_id === categoriaAtiva)?.total_votos ?? 0,
       }))
       .filter(f => f.geral > 0)
       .sort((a, b) => b.geral - a.geral)
       .slice(0, 6)
-  }, [ferrsGrupo, graficoCat, votosGeral, votosMes, votosSemana])
+  }, [ferrsGrupo, categoriaAtiva, votosGeral, votosMes, votosSemana])
 
   const maxComp = Math.max(...comparativo.map(f => f.geral), 1)
 
@@ -569,30 +570,29 @@ function AbaGraficos({
       .map(f => ({
         id: f.id,
         nome: f.nome,
-        total: votosGeral.find(v => v.ferramenta_id === f.id && v.categoria_uso_id === graficoCat)?.total_votos ?? 0,
+        total: votosGeral.find(v => v.ferramenta_id === f.id && v.categoria_uso_id === categoriaAtiva)?.total_votos ?? 0,
       }))
       .filter(f => f.total > 0)
       .sort((a, b) => b.total - a.total)
       .slice(0, 5)
-  }, [ferrsGrupo, graficoCat, votosGeral])
+  }, [ferrsGrupo, categoriaAtiva, votosGeral])
 
-  // Gera série temporal — acumulado por ferramenta, último 60 dias
+  // Gera série temporal — acumulado por ferramenta, últimos 60 dias
   const serieHistorica = useMemo(() => {
     if (top5ids.length === 0 || votosDiario.length === 0) return { dias: [], series: [] }
 
     const diasSet = new Set<string>()
     votosDiario
-      .filter(v => v.categoria_uso_id === graficoCat && top5ids.some(t => t.id === v.ferramenta_id))
+      .filter(v => v.categoria_uso_id === categoriaAtiva && top5ids.some(t => t.id === v.ferramenta_id))
       .forEach(v => diasSet.add(v.dia))
 
     const dias = Array.from(diasSet).sort()
     if (dias.length === 0) return { dias: [], series: [] }
 
-    // Acumulado por ferramenta ao longo dos dias
     const series = top5ids.map((t, colorIdx) => {
       let acumulado = 0
       const pontos = dias.map(dia => {
-        const reg = votosDiario.find(v => v.ferramenta_id === t.id && v.categoria_uso_id === graficoCat && v.dia === dia)
+        const reg = votosDiario.find(v => v.ferramenta_id === t.id && v.categoria_uso_id === categoriaAtiva && v.dia === dia)
         acumulado += reg?.total_votos ?? 0
         return acumulado
       })
@@ -600,38 +600,18 @@ function AbaGraficos({
     })
 
     return { dias, series }
-  }, [top5ids, votosDiario, graficoCat])
-
-  const graficoCatNome = categorias.find(c => c.id === graficoCat)?.nome ?? ''
+  }, [top5ids, votosDiario, categoriaAtiva])
 
   return (
     <div className="space-y-8">
-
-      {/* Seletor de categoria para os gráficos */}
-      <div className="flex items-center gap-2 flex-wrap">
-        <span className="text-xs text-zinc-500 shrink-0">Categoria:</span>
-        {categorias.map(cat => (
-          <button
-            key={cat.id}
-            onClick={() => setGraficoCat(cat.id)}
-            className={`text-xs px-3 py-1.5 rounded-full border transition-colors ${
-              graficoCat === cat.id
-                ? 'border-green-500/50 text-green-300 bg-green-500/10'
-                : 'border-zinc-800 text-zinc-500 hover:text-zinc-300 hover:border-zinc-700'
-            }`}
-          >
-            {cat.nome}
-          </button>
-        ))}
-      </div>
 
       {/* ── Gráfico 1: Comparativo geral / mês / semana ── */}
       <section>
         <h3 className="text-sm font-semibold text-white mb-1">
           Comparativo de períodos
-          <span className="text-zinc-500 font-normal ml-1.5">· {graficoCatNome}</span>
+          <span className="text-zinc-500 font-normal ml-1.5">· {categoriaNomeAtiva}</span>
         </h3>
-        <p className="text-xs text-zinc-600 mb-4">Quantos votos cada ferramenta recebeu no total, no último mês e na última semana</p>
+        <p className="text-xs text-zinc-600 mb-4">Votos recebidos no total, no último mês e na última semana</p>
 
         {comparativo.length === 0 ? (
           <EmptyChart />
@@ -724,7 +704,7 @@ function AbaGraficos({
       <section>
         <h3 className="text-sm font-semibold text-white mb-1">
           Evolução acumulada
-          <span className="text-zinc-500 font-normal ml-1.5">· {graficoCatNome}</span>
+          <span className="text-zinc-500 font-normal ml-1.5">· {categoriaNomeAtiva}</span>
         </h3>
         <p className="text-xs text-zinc-600 mb-4">Crescimento acumulado de votos ao longo do tempo para as top 5 ferramentas</p>
 

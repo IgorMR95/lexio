@@ -78,6 +78,7 @@ export function Navbar() {
   const isBaseActive = pathname.startsWith('/prompts') || pathname.startsWith('/skills')
 
   const otherLinks = [
+    { href: '/ranking', label: 'Ranking de IAs' },
     { href: '/academy', label: 'Academy' },
     { href: '/faq', label: 'FAQ' },
     ...(user ? [{ href: '/perfil', label: 'Perfil' }] : []),

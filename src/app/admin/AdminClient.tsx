@@ -25,6 +25,7 @@ const TABS = [
   { id: 'revisao', label: 'Revisão' },
   { id: 'prompts', label: 'Prompts' },
   { id: 'skills', label: 'Skills MD' },
+  { id: 'ferramentas', label: 'Ranking IAs' },
   { id: 'usuarios', label: 'Usuários' },
   { id: 'estrutura', label: 'Estrutura' },
   { id: 'areas', label: 'Áreas' },
@@ -92,6 +93,7 @@ export function AdminClient({ currentUserId, profiles: initialProfiles, auditLog
       {activeTab === 'revisao' && <RevisaoTab onCountChange={setPendentes} />}
       {activeTab === 'prompts' && <PromptsTab areas={areas} categorias={categorias} subcategorias={subcategorias} />}
       {activeTab === 'skills' && <SkillsAdminTab />}
+      {activeTab === 'ferramentas' && <FeramentasAdminTab />}
       {activeTab === 'usuarios' && <UsuariosTab profiles={profiles} currentUserId={currentUserId} onReload={reloadProfiles} />}
       {activeTab === 'estrutura' && (
         <EstruturaTab
@@ -998,6 +1000,128 @@ function PromptsTab({ areas, categorias, subcategorias }: { areas: Area[]; categ
               </button>
             </div>
           </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ── Ferramentas / Ranking IAs ─────────────────────────────────────────────────
+
+function FeramentasAdminTab() {
+  const supabase = createClient()
+  const [ferramentas, setFerramentas] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
+  const [search, setSearch] = useState('')
+  const [filterStatus, setFilterStatus] = useState('pendente')
+
+  const load = useCallback(async () => {
+    setLoading(true)
+    const q = (supabase as any).from('ferramentas').select('*').order('created_at', { ascending: false })
+    if (filterStatus) q.eq('status', filterStatus)
+    const { data } = await q
+    setFerramentas(data ?? [])
+    setLoading(false)
+  }, [filterStatus])
+
+  useEffect(() => { load() }, [load])
+
+  const setStatus = async (id: string, status: string) => {
+    await (supabase as any).from('ferramentas').update({ status }).eq('id', id)
+    load()
+  }
+
+  const toggleDestaque = async (id: string, destaque: boolean) => {
+    await (supabase as any).from('ferramentas').update({ destaque: !destaque }).eq('id', id)
+    load()
+  }
+
+  const del = async (id: string) => {
+    if (!confirm('Remover ferramenta?')) return
+    await (supabase as any).from('ferramentas').delete().eq('id', id)
+    load()
+  }
+
+  const TIPO_LABELS: Record<string, string> = {
+    llm: 'Modelo de IA', app: 'Aplicativo', extensao: 'Extensão', plataforma: 'Plataforma', outro: 'Outro',
+  }
+
+  const filtered = ferramentas.filter(f =>
+    !search || f.nome.toLowerCase().includes(search.toLowerCase())
+  )
+
+  return (
+    <div className="space-y-4">
+      <div className="flex flex-col sm:flex-row gap-3">
+        <input
+          type="text" placeholder="Buscar ferramenta..."
+          value={search} onChange={e => setSearch(e.target.value)}
+          className="flex-1 px-3 py-2 rounded-lg bg-zinc-900 border border-zinc-800 text-white text-sm focus:outline-none focus:border-zinc-600"
+        />
+        <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)}
+          className="px-3 py-2 rounded-lg bg-zinc-900 border border-zinc-800 text-zinc-300 text-sm focus:outline-none">
+          <option value="">Todos</option>
+          <option value="pendente">Pendentes</option>
+          <option value="ativo">Ativos</option>
+          <option value="rejeitado">Rejeitados</option>
+        </select>
+      </div>
+
+      {loading ? (
+        <p className="text-zinc-500 text-sm py-8 text-center">Carregando...</p>
+      ) : filtered.length === 0 ? (
+        <p className="text-zinc-500 text-sm py-8 text-center">Nenhuma ferramenta encontrada.</p>
+      ) : (
+        <div className="space-y-3">
+          {filtered.map(f => (
+            <div key={f.id} className="p-4 rounded-xl border border-zinc-800 bg-zinc-900/30 space-y-3">
+              <div className="flex items-start justify-between gap-3 flex-wrap">
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap mb-1">
+                    <p className="text-sm font-semibold text-white">{f.nome}</p>
+                    <span className="text-xs px-1.5 py-0.5 rounded-full bg-zinc-800 text-zinc-400 border border-zinc-700">
+                      {TIPO_LABELS[f.tipo] ?? f.tipo}
+                    </span>
+                    {f.destaque && <span className="text-xs text-yellow-400">★ Destaque</span>}
+                    <span className={`text-xs px-1.5 py-0.5 rounded-full border ${
+                      f.status === 'ativo' ? 'bg-green-500/10 text-green-400 border-green-500/20' :
+                      f.status === 'pendente' ? 'bg-amber-500/10 text-amber-400 border-amber-500/20' :
+                      'bg-red-500/10 text-red-400 border-red-500/20'
+                    }`}>{f.status}</span>
+                  </div>
+                  {f.descricao && <p className="text-xs text-zinc-500 line-clamp-2">{f.descricao}</p>}
+                  {f.url && <a href={f.url} target="_blank" rel="noopener noreferrer" className="text-xs text-zinc-600 hover:text-zinc-400 transition-colors">{f.url}</a>}
+                </div>
+                <div className="flex items-center gap-2 flex-shrink-0 flex-wrap">
+                  <button onClick={() => toggleDestaque(f.id, f.destaque)}
+                    className={`text-xs px-2.5 py-1.5 rounded-lg border transition-colors ${f.destaque ? 'border-yellow-500/40 text-yellow-400 bg-yellow-500/10' : 'border-zinc-700 text-zinc-500 hover:text-yellow-400'}`}>
+                    {f.destaque ? '★ Destaque' : '☆ Destacar'}
+                  </button>
+                  {f.status !== 'ativo' && (
+                    <button onClick={() => setStatus(f.id, 'ativo')}
+                      className="text-xs px-2.5 py-1.5 rounded-lg border border-green-500/30 text-green-400 bg-green-500/10 hover:bg-green-500/20 transition-colors">
+                      Aprovar
+                    </button>
+                  )}
+                  {f.status !== 'rejeitado' && (
+                    <button onClick={() => setStatus(f.id, 'rejeitado')}
+                      className="text-xs px-2.5 py-1.5 rounded-lg border border-red-500/30 text-red-400 hover:bg-red-500/10 transition-colors">
+                      Rejeitar
+                    </button>
+                  )}
+                  <button onClick={() => del(f.id)}
+                    className="text-xs px-2.5 py-1.5 rounded-lg border border-zinc-800 text-zinc-600 hover:text-red-400 hover:border-red-500/30 transition-colors">
+                    Excluir
+                  </button>
+                </div>
+              </div>
+              {f.observacoes && (
+                <div className="px-3 py-2 rounded-lg bg-zinc-950/50 border border-zinc-800/50">
+                  <p className="text-xs text-zinc-500"><span className="text-zinc-400">Obs:</span> {f.observacoes}</p>
+                </div>
+              )}
+            </div>
+          ))}
         </div>
       )}
     </div>

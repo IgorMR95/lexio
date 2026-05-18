@@ -48,11 +48,18 @@ function buildVotosMap(votos: VotoContagem[]) {
   return m
 }
 
-// Cores por posição
-const PODIO_BG = ['bg-yellow-500/10 border-yellow-500/30', 'bg-zinc-800/60 border-zinc-700', 'bg-amber-900/20 border-amber-700/30']
+const PODIO_BG  = ['bg-yellow-500/10 border-yellow-500/30', 'bg-zinc-800/60 border-zinc-700', 'bg-amber-900/20 border-amber-700/30']
 const PODIO_NUM = ['text-yellow-400', 'text-zinc-300', 'text-amber-500']
 const PODIO_BAR = ['bg-yellow-400', 'bg-zinc-400', 'bg-amber-600']
 const DEFAULT_BAR = 'bg-green-500'
+
+const TIPO_LABEL: Record<string, string> = {
+  llm: 'Modelo de linguagem',
+  app: 'Aplicativo',
+  extensao: 'Extensão',
+  plataforma: 'Plataforma',
+  outro: 'Outro',
+}
 
 export function RankingClient({
   ferramentas,
@@ -66,13 +73,13 @@ export function RankingClient({
   const perfis = categorias.filter(c => c.tipo_categoria === 'perfil')
   const usos   = categorias.filter(c => c.tipo_categoria === 'uso')
 
-  const [eixo, setEixo] = useState<EixoFiltro>('perfil')
+  const [eixo, setEixo]                     = useState<EixoFiltro>('perfil')
   const [categoriaAtiva, setCategoriaAtiva] = useState<string>(perfis[0]?.id ?? '')
-  const [grupoAtivo, setGrupoAtivo] = useState<'modelo' | 'ferramenta'>('modelo')
-  const [periodo, setPeriodo] = useState<Periodo>('geral')
-  const [meusVotos, setMeusVotos] = useState(initialMeusVotos)
+  const [grupoAtivo, setGrupoAtivo]         = useState<'modelo' | 'ferramenta'>('modelo')
+  const [periodo, setPeriodo]               = useState<Periodo>('geral')
+  const [meusVotos, setMeusVotos]           = useState(initialMeusVotos)
   const [votosGeralState, setVotosGeralState] = useState(votosGeral)
-  const [mostrarSugerir, setMostrarSugerir] = useState(false)
+  const [mostrarSugerir, setMostrarSugerir]   = useState(false)
   const [mostrarExplicacao, setMostrarExplicacao] = useState(false)
 
   function handleEixo(novoEixo: EixoFiltro) {
@@ -95,8 +102,10 @@ export function RankingClient({
       .sort((a, b) => b.votos_cat - a.votos_cat),
   [ferramentas, grupoAtivo, categoriaAtiva, votosMap])
 
-  const maxVotos = rankingAtual[0]?.votos_cat ?? 0
+  const maxVotos   = rankingAtual[0]?.votos_cat ?? 0
   const totalVotos = votosGeralState.reduce((s, v) => s + v.total_votos, 0)
+
+  const categoriaNomeAtiva = categorias.find(c => c.id === categoriaAtiva)?.nome ?? ''
 
   const handleVoto = async (ferramentaId: string) => {
     if (!userId || periodo !== 'geral') return
@@ -136,233 +145,287 @@ export function RankingClient({
   const categoriasAtivas = eixo === 'perfil' ? perfis : usos
 
   return (
-    <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+    <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
 
       {/* Header */}
       <div className="mb-8">
-        <div className="flex items-start justify-between gap-4 flex-wrap mb-1">
-          <h1 className="text-2xl font-bold text-white">Ranking de IAs no Direito</h1>
-          <button onClick={() => setMostrarSugerir(true)} className="text-xs px-3 py-1.5 rounded-lg border border-zinc-700 text-zinc-500 hover:text-white hover:border-zinc-500 transition-colors">
-            Sugerir ferramenta
-          </button>
-        </div>
+        <h1 className="text-2xl font-bold text-white mb-1">Ranking de IAs no Direito</h1>
         <p className="text-sm text-zinc-500">
-          Avaliadas por advogados, magistrados, promotores e defensores · {totalVotos} votos registrados
+          Avaliadas por advogados, magistrados, promotores e defensores · <span className="text-zinc-400">{totalVotos} votos registrados</span>
         </p>
       </div>
 
-      {/* Toggle Modelos / Ferramentas — destaque principal */}
-      <div className="flex gap-2 mb-6">
-        {(['modelo', 'ferramenta'] as const).map(g => (
-          <button
-            key={g}
-            onClick={() => setGrupoAtivo(g)}
-            className={`flex-1 py-3 rounded-xl text-sm font-semibold transition-all border ${
-              grupoAtivo === g
-                ? g === 'modelo'
-                  ? 'bg-violet-500/10 border-violet-500/30 text-violet-300'
-                  : 'bg-blue-500/10 border-blue-500/30 text-blue-300'
-                : 'border-zinc-800 text-zinc-500 hover:text-zinc-300 hover:border-zinc-700 bg-zinc-900/30'
-            }`}
-          >
-            {g === 'modelo' ? 'Modelos de IA' : 'Ferramentas'}
-            <span className="block text-xs font-normal mt-0.5 opacity-60">
-              {g === 'modelo' ? 'ChatGPT, Claude, Gemini...' : 'Apps e plataformas jurídicas'}
-            </span>
-          </button>
-        ))}
-      </div>
+      <div className="flex gap-8 items-start">
 
-      {/* Filtros: eixo + categorias + período — tudo numa linha compacta */}
-      <div className="space-y-3 mb-8">
-        {/* Eixo */}
-        <div className="flex items-center gap-2 flex-wrap">
-          <span className="text-xs text-zinc-600 shrink-0">Ver por:</span>
-          {(['perfil', 'uso'] as EixoFiltro[]).map(e => (
-            <button
-              key={e}
-              onClick={() => handleEixo(e)}
-              className={`text-xs px-3 py-1 rounded-full border transition-colors ${
-                eixo === e ? 'border-zinc-500 text-white bg-zinc-800' : 'border-zinc-800 text-zinc-500 hover:text-zinc-300'
-              }`}
-            >
-              {e === 'perfil' ? 'Perfil profissional' : 'Tipo de uso'}
-            </button>
-          ))}
-        </div>
+        {/* ── Sidebar ── */}
+        <aside className="w-56 shrink-0 space-y-6 sticky top-6">
 
-        {/* Categorias do eixo ativo */}
-        <div className="flex items-center gap-2 flex-wrap">
-          {categoriasAtivas.map(cat => (
-            <button
-              key={cat.id}
-              onClick={() => setCategoriaAtiva(cat.id)}
-              className={`text-xs px-3 py-1.5 rounded-full border transition-colors ${
-                categoriaAtiva === cat.id
-                  ? 'border-green-500/50 text-green-300 bg-green-500/10'
-                  : 'border-zinc-800 text-zinc-500 hover:text-zinc-300 hover:border-zinc-700'
-              }`}
-            >
-              {cat.nome}
-            </button>
-          ))}
-        </div>
-
-        {/* Período */}
-        <div className="flex items-center gap-2 flex-wrap">
-          <span className="text-xs text-zinc-600 shrink-0">Período:</span>
-          {([
-            { v: 'geral', l: 'Geral' },
-            { v: 'mes',   l: '30 dias' },
-            { v: 'semana',l: '7 dias' },
-          ] as { v: Periodo; l: string }[]).map(p => (
-            <button
-              key={p.v}
-              onClick={() => setPeriodo(p.v)}
-              className={`text-xs px-3 py-1 rounded-full border transition-colors ${
-                periodo === p.v ? 'border-zinc-500 text-white bg-zinc-800' : 'border-zinc-800 text-zinc-500 hover:text-zinc-300'
-              }`}
-            >
-              {p.l}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Banner login */}
-      {!userId && (
-        <div className="mb-6 px-4 py-3 rounded-xl border border-zinc-800 bg-zinc-900/30 flex items-center justify-between gap-3">
-          <p className="text-sm text-zinc-500">Faça login para votar nos favoritos da sua área</p>
-          <Link href="/login" className="text-sm text-green-400 hover:underline shrink-0 font-medium">Entrar</Link>
-        </div>
-      )}
-
-      {/* Lista */}
-      {rankingAtual.length === 0 ? (
-        <div className="text-center py-20 border border-dashed border-zinc-800 rounded-2xl">
-          <p className="text-zinc-500 text-sm">Nenhum{grupoAtivo === 'modelo' ? ' modelo' : 'a ferramenta'} cadastrado ainda.</p>
-        </div>
-      ) : (
-        <div className="space-y-2">
-          {rankingAtual.map((f, i) => {
-            const jaVotou = meusVotos.some(v => v.ferramenta_id === f.id && v.categoria_uso_id === categoriaAtiva)
-            const pct = maxVotos > 0 ? (f.votos_cat / maxVotos) * 100 : 0
-            const temVotos = f.votos_cat > 0
-            const isPodio = i < 3 && temVotos
-            const barColor = isPodio ? PODIO_BAR[i] : DEFAULT_BAR
-
-            return (
-              <div
-                key={f.id}
-                className={`rounded-2xl border transition-all ${isPodio ? PODIO_BG[i] : 'border-zinc-800/60 bg-zinc-900/20 hover:border-zinc-700'}`}
-              >
-                <div className="flex items-center gap-4 px-4 py-4">
-                  {/* Posição */}
-                  <div className="w-7 text-center shrink-0">
-                    <span className={`text-base font-black ${isPodio ? PODIO_NUM[i] : 'text-zinc-700'}`}>
-                      {temVotos ? i + 1 : '—'}
-                    </span>
-                  </div>
-
-                  {/* Avatar letra */}
-                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 font-bold text-sm border ${
-                    grupoAtivo === 'modelo'
-                      ? 'bg-violet-500/15 border-violet-500/20 text-violet-300'
-                      : 'bg-blue-500/15 border-blue-500/20 text-blue-300'
-                  }`}>
-                    {f.nome[0]?.toUpperCase()}
-                  </div>
-
-                  {/* Info + barra */}
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1.5">
-                      <span className="text-sm font-semibold text-white truncate">{f.nome}</span>
-                      {f.destaque && <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-yellow-500/10 text-yellow-400 border border-yellow-500/20 shrink-0">Destaque</span>}
-                    </div>
-
-                    {/* Barra de votos */}
-                    <div className="flex items-center gap-3">
-                      <div className="flex-1 h-2 rounded-full bg-zinc-800 overflow-hidden">
-                        <div
-                          className={`h-full rounded-full transition-all duration-700 ${barColor}`}
-                          style={{ width: temVotos ? `${Math.max(pct, 4)}%` : '0%' }}
-                        />
-                      </div>
-                      <span className="text-xs text-zinc-500 tabular-nums shrink-0 w-16 text-right">
-                        {temVotos ? `${f.votos_cat} ${f.votos_cat === 1 ? 'voto' : 'votos'}` : 'sem votos'}
-                      </span>
-                    </div>
-
-                    {f.descricao && (
-                      <p className="text-xs text-zinc-600 mt-1.5 line-clamp-1">{f.descricao}</p>
-                    )}
-                  </div>
-
-                  {/* Botão voto */}
-                  <button
-                    onClick={() => handleVoto(f.id)}
-                    disabled={!userId || periodo !== 'geral'}
-                    title={!userId ? 'Entre para votar' : periodo !== 'geral' ? 'Disponível no ranking geral' : jaVotou ? 'Remover voto' : 'Votar'}
-                    className={`shrink-0 w-10 h-10 rounded-xl border flex items-center justify-center transition-all ${
-                      jaVotou && periodo === 'geral'
-                        ? 'border-green-500/50 bg-green-500/15 text-green-400'
-                        : userId && periodo === 'geral'
-                          ? 'border-zinc-700 text-zinc-500 hover:border-zinc-400 hover:text-white'
-                          : 'border-zinc-800 text-zinc-700 cursor-not-allowed'
-                    }`}
-                  >
-                    <svg className="w-4 h-4" fill={jaVotou && periodo === 'geral' ? 'currentColor' : 'none'} stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
-                    </svg>
-                  </button>
-                </div>
-
-                {/* Link externo — apenas 1ª linha, no rodapé do card se existir */}
-                {f.url && (
-                  <div className="px-4 pb-3 -mt-1">
-                    <a href={f.url} target="_blank" rel="noopener noreferrer" className="text-xs text-zinc-700 hover:text-zinc-400 transition-colors">
-                      {f.url.replace(/^https?:\/\//, '').replace(/\/$/, '')} ↗
-                    </a>
-                  </div>
-                )}
-              </div>
-            )
-          })}
-        </div>
-      )}
-
-      {/* Explicação modelos vs ferramentas — no rodapé, fora do fluxo principal */}
-      <div className="mt-12 border border-zinc-800 rounded-2xl overflow-hidden">
-        <button
-          onClick={() => setMostrarExplicacao(o => !o)}
-          className="w-full flex items-center justify-between px-5 py-4 text-left hover:bg-zinc-900/40 transition-colors"
-        >
-          <span className="text-sm text-zinc-400">
-            Qual é a diferença entre <span className="text-white">modelos de IA</span> e <span className="text-white">ferramentas</span>?
-          </span>
-          <svg className={`w-4 h-4 text-zinc-500 transition-transform shrink-0 ml-3 ${mostrarExplicacao ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-          </svg>
-        </button>
-        {mostrarExplicacao && (
-          <div className="px-5 pb-5 pt-1 border-t border-zinc-800/60 grid sm:grid-cols-2 gap-4">
-            <div className="p-4 rounded-xl bg-violet-500/5 border border-violet-500/15">
-              <p className="text-sm font-semibold text-violet-300 mb-1.5">Modelos de IA</p>
-              <p className="text-xs text-zinc-400 leading-relaxed">
-                São os &ldquo;cérebros&rdquo; — você interage diretamente via chat. Exemplos: <span className="text-zinc-300">ChatGPT, Claude, Gemini</span>. Escreve uma instrução e eles respondem. Versões gratuitas disponíveis.
-              </p>
+          {/* Modelos vs Ferramentas */}
+          <div>
+            <p className="text-[11px] font-semibold text-zinc-500 uppercase tracking-widest mb-2">Tipo</p>
+            <div className="space-y-1">
+              {([
+                { v: 'modelo',     l: 'Modelos de IA',  sub: 'ChatGPT, Claude, Gemini…' },
+                { v: 'ferramenta', l: 'Ferramentas',     sub: 'Apps e plataformas' },
+              ] as { v: 'modelo' | 'ferramenta'; l: string; sub: string }[]).map(g => (
+                <button
+                  key={g.v}
+                  onClick={() => setGrupoAtivo(g.v)}
+                  className={`w-full text-left px-3 py-2.5 rounded-xl border text-sm transition-all ${
+                    grupoAtivo === g.v
+                      ? g.v === 'modelo'
+                        ? 'bg-violet-500/10 border-violet-500/30 text-violet-300'
+                        : 'bg-blue-500/10 border-blue-500/30 text-blue-300'
+                      : 'border-zinc-800 text-zinc-500 hover:text-zinc-300 hover:border-zinc-700 bg-transparent'
+                  }`}
+                >
+                  <span className="font-medium block">{g.l}</span>
+                  <span className="text-[11px] opacity-60 font-normal">{g.sub}</span>
+                </button>
+              ))}
             </div>
-            <div className="p-4 rounded-xl bg-blue-500/5 border border-blue-500/15">
-              <p className="text-sm font-semibold text-blue-300 mb-1.5">Ferramentas que usam IA</p>
-              <p className="text-xs text-zinc-400 leading-relaxed">
-                Aplicativos construídos <em>por cima</em> de um modelo, com funções específicas. Exemplos: <span className="text-zinc-300">Clio, Harvey, Detach Legal</span>. Integram com sua rotina, geralmente com assinatura paga.
-              </p>
-            </div>
-            <p className="sm:col-span-2 text-xs text-zinc-600 px-1">
-              Analogia: o modelo é o motor. A ferramenta é o carro inteiro. Para começar, modelos gratuitos já são suficientes.
-            </p>
           </div>
-        )}
+
+          {/* Eixo de filtro */}
+          <div>
+            <p className="text-[11px] font-semibold text-zinc-500 uppercase tracking-widest mb-2">Ver por</p>
+            <div className="flex rounded-lg border border-zinc-800 overflow-hidden">
+              {(['perfil', 'uso'] as EixoFiltro[]).map((e, idx) => (
+                <button
+                  key={e}
+                  onClick={() => handleEixo(e)}
+                  className={`flex-1 py-1.5 text-xs font-medium transition-colors ${
+                    idx === 0 ? '' : 'border-l border-zinc-800'
+                  } ${
+                    eixo === e ? 'bg-zinc-800 text-white' : 'text-zinc-500 hover:text-zinc-300'
+                  }`}
+                >
+                  {e === 'perfil' ? 'Perfil' : 'Uso'}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Categorias do eixo ativo */}
+          <div>
+            <p className="text-[11px] font-semibold text-zinc-500 uppercase tracking-widest mb-2">
+              {eixo === 'perfil' ? 'Perfil profissional' : 'Tipo de uso'}
+            </p>
+            <div className="space-y-0.5">
+              {categoriasAtivas.map(cat => (
+                <button
+                  key={cat.id}
+                  onClick={() => setCategoriaAtiva(cat.id)}
+                  className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-colors ${
+                    categoriaAtiva === cat.id
+                      ? 'bg-green-500/10 text-green-300 border border-green-500/20'
+                      : 'text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800/50 border border-transparent'
+                  }`}
+                >
+                  {cat.nome}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Período */}
+          <div>
+            <p className="text-[11px] font-semibold text-zinc-500 uppercase tracking-widest mb-2">Período</p>
+            <div className="space-y-0.5">
+              {([
+                { v: 'geral',  l: 'Geral (todos os tempos)' },
+                { v: 'mes',    l: 'Últimos 30 dias' },
+                { v: 'semana', l: 'Últimos 7 dias' },
+              ] as { v: Periodo; l: string }[]).map(p => (
+                <button
+                  key={p.v}
+                  onClick={() => setPeriodo(p.v)}
+                  className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-colors ${
+                    periodo === p.v
+                      ? 'bg-zinc-800 text-white border border-zinc-700'
+                      : 'text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800/50 border border-transparent'
+                  }`}
+                >
+                  {p.l}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Bloco informativo: modelos vs ferramentas */}
+          <div className="rounded-xl border border-zinc-800 overflow-hidden">
+            <button
+              onClick={() => setMostrarExplicacao(o => !o)}
+              className="w-full flex items-center justify-between px-3 py-2.5 text-left hover:bg-zinc-900/50 transition-colors"
+            >
+              <span className="text-xs text-zinc-400 font-medium leading-snug">Entenda a diferença</span>
+              <svg className={`w-3.5 h-3.5 text-zinc-600 transition-transform shrink-0 ml-2 ${mostrarExplicacao ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              </svg>
+            </button>
+            {mostrarExplicacao && (
+              <div className="px-3 pb-3 pt-1 border-t border-zinc-800/60 space-y-2.5">
+                <div>
+                  <p className="text-xs font-semibold text-violet-300 mb-0.5">Modelos de IA</p>
+                  <p className="text-[11px] text-zinc-500 leading-relaxed">
+                    O &ldquo;cérebro&rdquo; — você conversa diretamente via chat. Ex: ChatGPT, Claude, Gemini. Versões gratuitas disponíveis.
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs font-semibold text-blue-300 mb-0.5">Ferramentas</p>
+                  <p className="text-[11px] text-zinc-500 leading-relaxed">
+                    Apps construídos sobre um modelo com funções específicas. Ex: Clio, Harvey. Geralmente pagos.
+                  </p>
+                </div>
+                <p className="text-[11px] text-zinc-600 italic">
+                  O modelo é o motor. A ferramenta é o carro completo.
+                </p>
+              </div>
+            )}
+          </div>
+
+          {/* Sugerir ferramenta */}
+          <button
+            onClick={() => setMostrarSugerir(true)}
+            className="w-full text-xs px-3 py-2 rounded-lg border border-zinc-800 text-zinc-600 hover:text-zinc-400 hover:border-zinc-700 transition-colors text-left"
+          >
+            + Sugerir ferramenta
+          </button>
+        </aside>
+
+        {/* ── Conteúdo principal ── */}
+        <div className="flex-1 min-w-0">
+
+          {/* Cabeçalho do ranking atual */}
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h2 className="text-base font-semibold text-white">
+                {grupoAtivo === 'modelo' ? 'Modelos de IA' : 'Ferramentas'}
+                <span className="text-zinc-500 font-normal"> · {categoriaNomeAtiva}</span>
+              </h2>
+              <p className="text-xs text-zinc-600 mt-0.5">
+                {periodo === 'geral' ? 'Ranking geral — todos os votos' : periodo === 'mes' ? 'Últimos 30 dias' : 'Últimos 7 dias'}
+                {periodo !== 'geral' && <span className="text-zinc-700"> · votação disponível apenas no ranking geral</span>}
+              </p>
+            </div>
+            <span className="text-xs text-zinc-600 tabular-nums">{rankingAtual.length} itens</span>
+          </div>
+
+          {/* Banner login */}
+          {!userId && (
+            <div className="mb-4 px-4 py-3 rounded-xl border border-zinc-800 bg-zinc-900/30 flex items-center justify-between gap-3">
+              <p className="text-sm text-zinc-500">Faça login para votar nos favoritos da sua área</p>
+              <Link href="/login" className="text-sm text-green-400 hover:underline shrink-0 font-medium">Entrar</Link>
+            </div>
+          )}
+
+          {/* Lista */}
+          {rankingAtual.length === 0 ? (
+            <div className="text-center py-20 border border-dashed border-zinc-800 rounded-2xl">
+              <p className="text-zinc-500 text-sm">Nenhum{grupoAtivo === 'modelo' ? ' modelo' : 'a ferramenta'} cadastrado ainda.</p>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {rankingAtual.map((f, i) => {
+                const jaVotou = meusVotos.some(v => v.ferramenta_id === f.id && v.categoria_uso_id === categoriaAtiva)
+                const pct     = maxVotos > 0 ? (f.votos_cat / maxVotos) * 100 : 0
+                const temVotos = f.votos_cat > 0
+                const isPodio  = i < 3 && temVotos
+                const barColor = isPodio ? PODIO_BAR[i] : DEFAULT_BAR
+
+                return (
+                  <div
+                    key={f.id}
+                    className={`rounded-2xl border transition-all ${isPodio ? PODIO_BG[i] : 'border-zinc-800/60 bg-zinc-900/20 hover:border-zinc-700'}`}
+                  >
+                    <div className="flex items-start gap-4 px-5 py-4">
+
+                      {/* Posição */}
+                      <div className="w-7 text-center pt-1 shrink-0">
+                        <span className={`text-lg font-black leading-none ${isPodio ? PODIO_NUM[i] : 'text-zinc-700'}`}>
+                          {temVotos ? i + 1 : '—'}
+                        </span>
+                      </div>
+
+                      {/* Avatar letra */}
+                      <div className={`w-11 h-11 rounded-xl flex items-center justify-center shrink-0 font-bold text-base border ${
+                        grupoAtivo === 'modelo'
+                          ? 'bg-violet-500/15 border-violet-500/20 text-violet-300'
+                          : 'bg-blue-500/15 border-blue-500/20 text-blue-300'
+                      }`}>
+                        {f.nome[0]?.toUpperCase()}
+                      </div>
+
+                      {/* Info */}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap mb-1">
+                          <span className="text-sm font-semibold text-white">{f.nome}</span>
+                          {f.destaque && (
+                            <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-yellow-500/10 text-yellow-400 border border-yellow-500/20 shrink-0">
+                              Destaque
+                            </span>
+                          )}
+                          <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-zinc-800 text-zinc-500 border border-zinc-700/50 shrink-0">
+                            {TIPO_LABEL[f.tipo] ?? f.tipo}
+                          </span>
+                        </div>
+
+                        {f.descricao && (
+                          <p className="text-xs text-zinc-500 mb-2 leading-relaxed line-clamp-2">{f.descricao}</p>
+                        )}
+
+                        {/* Barra de votos */}
+                        <div className="flex items-center gap-3">
+                          <div className="flex-1 h-2 rounded-full bg-zinc-800/80 overflow-hidden">
+                            <div
+                              className={`h-full rounded-full transition-all duration-700 ${barColor}`}
+                              style={{ width: temVotos ? `${Math.max(pct, 3)}%` : '0%' }}
+                            />
+                          </div>
+                          <span className="text-xs text-zinc-500 tabular-nums shrink-0 w-20 text-right">
+                            {temVotos ? `${f.votos_cat} ${f.votos_cat === 1 ? 'voto' : 'votos'}` : 'sem votos'}
+                          </span>
+                        </div>
+
+                        {f.url && (
+                          <a
+                            href={f.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-block mt-2 text-[11px] text-zinc-700 hover:text-zinc-400 transition-colors"
+                          >
+                            {f.url.replace(/^https?:\/\//, '').replace(/\/$/, '')} ↗
+                          </a>
+                        )}
+                      </div>
+
+                      {/* Botão voto */}
+                      <button
+                        onClick={() => handleVoto(f.id)}
+                        disabled={!userId || periodo !== 'geral'}
+                        title={!userId ? 'Entre para votar' : periodo !== 'geral' ? 'Disponível apenas no ranking geral' : jaVotou ? 'Remover voto' : 'Votar'}
+                        className={`shrink-0 flex flex-col items-center justify-center gap-0.5 w-12 h-12 rounded-xl border transition-all mt-0.5 ${
+                          jaVotou && periodo === 'geral'
+                            ? 'border-green-500/50 bg-green-500/15 text-green-400'
+                            : userId && periodo === 'geral'
+                              ? 'border-zinc-700 text-zinc-500 hover:border-zinc-400 hover:text-white'
+                              : 'border-zinc-800 text-zinc-700 cursor-not-allowed'
+                        }`}
+                      >
+                        <svg className="w-4 h-4" fill={jaVotou && periodo === 'geral' ? 'currentColor' : 'none'} stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
+                        </svg>
+                        {temVotos && (
+                          <span className="text-[10px] font-semibold tabular-nums leading-none">{f.votos_cat}</span>
+                        )}
+                      </button>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   )

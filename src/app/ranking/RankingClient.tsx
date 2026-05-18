@@ -29,18 +29,27 @@ interface VotoContagem {
   total_votos: number
 }
 
+interface VotoDiario {
+  ferramenta_id: string
+  categoria_uso_id: string
+  dia: string
+  total_votos: number
+}
+
 interface Props {
   ferramentas: Ferramenta[]
   categorias: Categoria[]
   votosGeral: VotoContagem[]
   votosSemana: VotoContagem[]
   votosMes: VotoContagem[]
+  votosDiario: VotoDiario[]
   meusVotos: { ferramenta_id: string; categoria_uso_id: string }[]
   userId: string | null
 }
 
 type Periodo = 'geral' | 'mes' | 'semana'
 type EixoFiltro = 'perfil' | 'uso'
+type Aba = 'ranking' | 'graficos'
 
 function buildVotosMap(votos: VotoContagem[]) {
   const m: Record<string, number> = {}
@@ -61,18 +70,30 @@ const TIPO_LABEL: Record<string, string> = {
   outro: 'Outro',
 }
 
+// Paleta de cores para linhas do gráfico histórico
+const LINHA_CORES = [
+  { stroke: '#a78bfa', bg: 'bg-violet-400' },
+  { stroke: '#34d399', bg: 'bg-emerald-400' },
+  { stroke: '#60a5fa', bg: 'bg-blue-400' },
+  { stroke: '#f59e0b', bg: 'bg-amber-400' },
+  { stroke: '#f472b6', bg: 'bg-pink-400' },
+  { stroke: '#fb923c', bg: 'bg-orange-400' },
+]
+
 export function RankingClient({
   ferramentas,
   categorias,
   votosGeral,
   votosSemana,
   votosMes,
+  votosDiario,
   meusVotos: initialMeusVotos,
   userId,
 }: Props) {
   const perfis = categorias.filter(c => c.tipo_categoria === 'perfil')
   const usos   = categorias.filter(c => c.tipo_categoria === 'uso')
 
+  const [aba, setAba]                       = useState<Aba>('ranking')
   const [eixo, setEixo]                     = useState<EixoFiltro>('perfil')
   const [categoriaAtiva, setCategoriaAtiva] = useState<string>(perfis[0]?.id ?? '')
   const [grupoAtivo, setGrupoAtivo]         = useState<'modelo' | 'ferramenta'>('modelo')
@@ -104,7 +125,6 @@ export function RankingClient({
 
   const maxVotos   = rankingAtual[0]?.votos_cat ?? 0
   const totalVotos = votosGeralState.reduce((s, v) => s + v.total_votos, 0)
-
   const categoriaNomeAtiva = categorias.find(c => c.id === categoriaAtiva)?.nome ?? ''
 
   const handleVoto = async (ferramentaId: string) => {
@@ -148,11 +168,34 @@ export function RankingClient({
     <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
 
       {/* Header */}
-      <div className="mb-8">
+      <div className="mb-6">
         <h1 className="text-2xl font-bold text-white mb-1">Ranking de IAs no Direito</h1>
         <p className="text-sm text-zinc-500">
           Avaliadas por advogados, magistrados, promotores e defensores · <span className="text-zinc-400">{totalVotos} votos registrados</span>
         </p>
+      </div>
+
+      {/* Abas */}
+      <div className="flex gap-1 mb-8 border-b border-zinc-800">
+        {([
+          { v: 'ranking',  l: 'Ranking', icon: 'M3 4h13M3 8h9m-9 4h6m4 0l4-4m0 0l4 4m-4-4v12' },
+          { v: 'graficos', l: 'Gráficos', icon: 'M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z' },
+        ] as { v: Aba; l: string; icon: string }[]).map(a => (
+          <button
+            key={a.v}
+            onClick={() => setAba(a.v)}
+            className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium border-b-2 -mb-px transition-colors ${
+              aba === a.v
+                ? 'border-green-500 text-white'
+                : 'border-transparent text-zinc-500 hover:text-zinc-300'
+            }`}
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={a.icon} />
+            </svg>
+            {a.l}
+          </button>
+        ))}
       </div>
 
       <div className="flex gap-8 items-start">
@@ -228,29 +271,31 @@ export function RankingClient({
             </div>
           </div>
 
-          {/* Período */}
-          <div>
-            <p className="text-[11px] font-semibold text-zinc-500 uppercase tracking-widest mb-2">Período</p>
-            <div className="space-y-0.5">
-              {([
-                { v: 'geral',  l: 'Geral (todos os tempos)' },
-                { v: 'mes',    l: 'Últimos 30 dias' },
-                { v: 'semana', l: 'Últimos 7 dias' },
-              ] as { v: Periodo; l: string }[]).map(p => (
-                <button
-                  key={p.v}
-                  onClick={() => setPeriodo(p.v)}
-                  className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-colors ${
-                    periodo === p.v
-                      ? 'bg-zinc-800 text-white border border-zinc-700'
-                      : 'text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800/50 border border-transparent'
-                  }`}
-                >
-                  {p.l}
-                </button>
-              ))}
+          {/* Período — só na aba ranking */}
+          {aba === 'ranking' && (
+            <div>
+              <p className="text-[11px] font-semibold text-zinc-500 uppercase tracking-widest mb-2">Período</p>
+              <div className="space-y-0.5">
+                {([
+                  { v: 'geral',  l: 'Geral (todos os tempos)' },
+                  { v: 'mes',    l: 'Últimos 30 dias' },
+                  { v: 'semana', l: 'Últimos 7 dias' },
+                ] as { v: Periodo; l: string }[]).map(p => (
+                  <button
+                    key={p.v}
+                    onClick={() => setPeriodo(p.v)}
+                    className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-colors ${
+                      periodo === p.v
+                        ? 'bg-zinc-800 text-white border border-zinc-700'
+                        : 'text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800/50 border border-transparent'
+                    }`}
+                  >
+                    {p.l}
+                  </button>
+                ))}
+              </div>
             </div>
-          </div>
+          )}
 
           {/* Bloco informativo: modelos vs ferramentas */}
           <div className="rounded-xl border border-zinc-800 overflow-hidden">
@@ -284,7 +329,6 @@ export function RankingClient({
             )}
           </div>
 
-          {/* Sugerir ferramenta */}
           <button
             onClick={() => setMostrarSugerir(true)}
             className="w-full text-xs px-3 py-2 rounded-lg border border-zinc-800 text-zinc-600 hover:text-zinc-400 hover:border-zinc-700 transition-colors text-left"
@@ -295,135 +339,29 @@ export function RankingClient({
 
         {/* ── Conteúdo principal ── */}
         <div className="flex-1 min-w-0">
-
-          {/* Cabeçalho do ranking atual */}
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              <h2 className="text-base font-semibold text-white">
-                {grupoAtivo === 'modelo' ? 'Modelos de IA' : 'Ferramentas'}
-                <span className="text-zinc-500 font-normal"> · {categoriaNomeAtiva}</span>
-              </h2>
-              <p className="text-xs text-zinc-600 mt-0.5">
-                {periodo === 'geral' ? 'Ranking geral — todos os votos' : periodo === 'mes' ? 'Últimos 30 dias' : 'Últimos 7 dias'}
-                {periodo !== 'geral' && <span className="text-zinc-700"> · votação disponível apenas no ranking geral</span>}
-              </p>
-            </div>
-            <span className="text-xs text-zinc-600 tabular-nums">{rankingAtual.length} itens</span>
-          </div>
-
-          {/* Banner login */}
-          {!userId && (
-            <div className="mb-4 px-4 py-3 rounded-xl border border-zinc-800 bg-zinc-900/30 flex items-center justify-between gap-3">
-              <p className="text-sm text-zinc-500">Faça login para votar nos favoritos da sua área</p>
-              <Link href="/login" className="text-sm text-green-400 hover:underline shrink-0 font-medium">Entrar</Link>
-            </div>
-          )}
-
-          {/* Lista */}
-          {rankingAtual.length === 0 ? (
-            <div className="text-center py-20 border border-dashed border-zinc-800 rounded-2xl">
-              <p className="text-zinc-500 text-sm">Nenhum{grupoAtivo === 'modelo' ? ' modelo' : 'a ferramenta'} cadastrado ainda.</p>
-            </div>
+          {aba === 'ranking' ? (
+            <AbaRanking
+              rankingAtual={rankingAtual}
+              grupoAtivo={grupoAtivo}
+              categoriaNomeAtiva={categoriaNomeAtiva}
+              categoriaAtiva={categoriaAtiva}
+              periodo={periodo}
+              maxVotos={maxVotos}
+              meusVotos={meusVotos}
+              userId={userId}
+              handleVoto={handleVoto}
+            />
           ) : (
-            <div className="space-y-2">
-              {rankingAtual.map((f, i) => {
-                const jaVotou = meusVotos.some(v => v.ferramenta_id === f.id && v.categoria_uso_id === categoriaAtiva)
-                const pct     = maxVotos > 0 ? (f.votos_cat / maxVotos) * 100 : 0
-                const temVotos = f.votos_cat > 0
-                const isPodio  = i < 3 && temVotos
-                const barColor = isPodio ? PODIO_BAR[i] : DEFAULT_BAR
-
-                return (
-                  <div
-                    key={f.id}
-                    className={`rounded-2xl border transition-all ${isPodio ? PODIO_BG[i] : 'border-zinc-800/60 bg-zinc-900/20 hover:border-zinc-700'}`}
-                  >
-                    <div className="flex items-start gap-4 px-5 py-4">
-
-                      {/* Posição */}
-                      <div className="w-7 text-center pt-1 shrink-0">
-                        <span className={`text-lg font-black leading-none ${isPodio ? PODIO_NUM[i] : 'text-zinc-700'}`}>
-                          {temVotos ? i + 1 : '—'}
-                        </span>
-                      </div>
-
-                      {/* Avatar letra */}
-                      <div className={`w-11 h-11 rounded-xl flex items-center justify-center shrink-0 font-bold text-base border ${
-                        grupoAtivo === 'modelo'
-                          ? 'bg-violet-500/15 border-violet-500/20 text-violet-300'
-                          : 'bg-blue-500/15 border-blue-500/20 text-blue-300'
-                      }`}>
-                        {f.nome[0]?.toUpperCase()}
-                      </div>
-
-                      {/* Info */}
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 flex-wrap mb-1">
-                          <span className="text-sm font-semibold text-white">{f.nome}</span>
-                          {f.destaque && (
-                            <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-yellow-500/10 text-yellow-400 border border-yellow-500/20 shrink-0">
-                              Destaque
-                            </span>
-                          )}
-                          <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-zinc-800 text-zinc-500 border border-zinc-700/50 shrink-0">
-                            {TIPO_LABEL[f.tipo] ?? f.tipo}
-                          </span>
-                        </div>
-
-                        {f.descricao && (
-                          <p className="text-xs text-zinc-500 mb-2 leading-relaxed line-clamp-2">{f.descricao}</p>
-                        )}
-
-                        {/* Barra de votos */}
-                        <div className="flex items-center gap-3">
-                          <div className="flex-1 h-2 rounded-full bg-zinc-800/80 overflow-hidden">
-                            <div
-                              className={`h-full rounded-full transition-all duration-700 ${barColor}`}
-                              style={{ width: temVotos ? `${Math.max(pct, 3)}%` : '0%' }}
-                            />
-                          </div>
-                          <span className="text-xs text-zinc-500 tabular-nums shrink-0 w-20 text-right">
-                            {temVotos ? `${f.votos_cat} ${f.votos_cat === 1 ? 'voto' : 'votos'}` : 'sem votos'}
-                          </span>
-                        </div>
-
-                        {f.url && (
-                          <a
-                            href={f.url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="inline-block mt-2 text-[11px] text-zinc-700 hover:text-zinc-400 transition-colors"
-                          >
-                            {f.url.replace(/^https?:\/\//, '').replace(/\/$/, '')} ↗
-                          </a>
-                        )}
-                      </div>
-
-                      {/* Botão voto */}
-                      <button
-                        onClick={() => handleVoto(f.id)}
-                        disabled={!userId || periodo !== 'geral'}
-                        title={!userId ? 'Entre para votar' : periodo !== 'geral' ? 'Disponível apenas no ranking geral' : jaVotou ? 'Remover voto' : 'Votar'}
-                        className={`shrink-0 flex flex-col items-center justify-center gap-0.5 w-12 h-12 rounded-xl border transition-all mt-0.5 ${
-                          jaVotou && periodo === 'geral'
-                            ? 'border-green-500/50 bg-green-500/15 text-green-400'
-                            : userId && periodo === 'geral'
-                              ? 'border-zinc-700 text-zinc-500 hover:border-zinc-400 hover:text-white'
-                              : 'border-zinc-800 text-zinc-700 cursor-not-allowed'
-                        }`}
-                      >
-                        <svg className="w-4 h-4" fill={jaVotou && periodo === 'geral' ? 'currentColor' : 'none'} stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
-                        </svg>
-                        {temVotos && (
-                          <span className="text-[10px] font-semibold tabular-nums leading-none">{f.votos_cat}</span>
-                        )}
-                      </button>
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
+            <AbaGraficos
+              ferramentas={ferramentas}
+              categorias={categorias}
+              categoriaAtiva={categoriaAtiva}
+              grupoAtivo={grupoAtivo}
+              votosGeral={votosGeralState}
+              votosSemana={votosSemana}
+              votosMes={votosMes}
+              votosDiario={votosDiario}
+            />
           )}
         </div>
       </div>
@@ -431,6 +369,504 @@ export function RankingClient({
   )
 }
 
+/* ────────────────────────────────────────────
+   Aba Ranking
+──────────────────────────────────────────── */
+function AbaRanking({
+  rankingAtual,
+  grupoAtivo,
+  categoriaNomeAtiva,
+  categoriaAtiva,
+  periodo,
+  maxVotos,
+  meusVotos,
+  userId,
+  handleVoto,
+}: {
+  rankingAtual: (Ferramenta & { votos_cat: number })[]
+  grupoAtivo: 'modelo' | 'ferramenta'
+  categoriaNomeAtiva: string
+  categoriaAtiva: string
+  periodo: Periodo
+  maxVotos: number
+  meusVotos: { ferramenta_id: string; categoria_uso_id: string }[]
+  userId: string | null
+  handleVoto: (id: string) => void
+}) {
+  return (
+    <>
+      <div className="flex items-center justify-between mb-4">
+        <div>
+          <h2 className="text-base font-semibold text-white">
+            {grupoAtivo === 'modelo' ? 'Modelos de IA' : 'Ferramentas'}
+            <span className="text-zinc-500 font-normal"> · {categoriaNomeAtiva}</span>
+          </h2>
+          <p className="text-xs text-zinc-600 mt-0.5">
+            {periodo === 'geral' ? 'Ranking geral — todos os votos' : periodo === 'mes' ? 'Últimos 30 dias' : 'Últimos 7 dias'}
+            {periodo !== 'geral' && <span className="text-zinc-700"> · votação disponível apenas no ranking geral</span>}
+          </p>
+        </div>
+        <span className="text-xs text-zinc-600 tabular-nums">{rankingAtual.length} itens</span>
+      </div>
+
+      {!userId && (
+        <div className="mb-4 px-4 py-3 rounded-xl border border-zinc-800 bg-zinc-900/30 flex items-center justify-between gap-3">
+          <p className="text-sm text-zinc-500">Faça login para votar nos favoritos da sua área</p>
+          <Link href="/login" className="text-sm text-green-400 hover:underline shrink-0 font-medium">Entrar</Link>
+        </div>
+      )}
+
+      {rankingAtual.length === 0 ? (
+        <div className="text-center py-20 border border-dashed border-zinc-800 rounded-2xl">
+          <p className="text-zinc-500 text-sm">Nenhum{grupoAtivo === 'modelo' ? ' modelo' : 'a ferramenta'} cadastrado ainda.</p>
+        </div>
+      ) : (
+        <div className="space-y-2">
+          {rankingAtual.map((f, i) => {
+            const jaVotou  = meusVotos.some(v => v.ferramenta_id === f.id && v.categoria_uso_id === categoriaAtiva)
+            const pct      = maxVotos > 0 ? (f.votos_cat / maxVotos) * 100 : 0
+            const temVotos = f.votos_cat > 0
+            const isPodio  = i < 3 && temVotos
+            const barColor = isPodio ? PODIO_BAR[i] : DEFAULT_BAR
+
+            return (
+              <div
+                key={f.id}
+                className={`rounded-2xl border transition-all ${isPodio ? PODIO_BG[i] : 'border-zinc-800/60 bg-zinc-900/20 hover:border-zinc-700'}`}
+              >
+                <div className="flex items-start gap-4 px-5 py-4">
+                  <div className="w-7 text-center pt-1 shrink-0">
+                    <span className={`text-lg font-black leading-none ${isPodio ? PODIO_NUM[i] : 'text-zinc-700'}`}>
+                      {temVotos ? i + 1 : '—'}
+                    </span>
+                  </div>
+                  <div className={`w-11 h-11 rounded-xl flex items-center justify-center shrink-0 font-bold text-base border ${
+                    grupoAtivo === 'modelo'
+                      ? 'bg-violet-500/15 border-violet-500/20 text-violet-300'
+                      : 'bg-blue-500/15 border-blue-500/20 text-blue-300'
+                  }`}>
+                    {f.nome[0]?.toUpperCase()}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap mb-1">
+                      <span className="text-sm font-semibold text-white">{f.nome}</span>
+                      {f.destaque && (
+                        <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-yellow-500/10 text-yellow-400 border border-yellow-500/20 shrink-0">Destaque</span>
+                      )}
+                      <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-zinc-800 text-zinc-500 border border-zinc-700/50 shrink-0">
+                        {TIPO_LABEL[f.tipo] ?? f.tipo}
+                      </span>
+                    </div>
+                    {f.descricao && (
+                      <p className="text-xs text-zinc-500 mb-2 leading-relaxed line-clamp-2">{f.descricao}</p>
+                    )}
+                    <div className="flex items-center gap-3">
+                      <div className="flex-1 h-2 rounded-full bg-zinc-800/80 overflow-hidden">
+                        <div
+                          className={`h-full rounded-full transition-all duration-700 ${barColor}`}
+                          style={{ width: temVotos ? `${Math.max(pct, 3)}%` : '0%' }}
+                        />
+                      </div>
+                      <span className="text-xs text-zinc-500 tabular-nums shrink-0 w-20 text-right">
+                        {temVotos ? `${f.votos_cat} ${f.votos_cat === 1 ? 'voto' : 'votos'}` : 'sem votos'}
+                      </span>
+                    </div>
+                    {f.url && (
+                      <a href={f.url} target="_blank" rel="noopener noreferrer" className="inline-block mt-2 text-[11px] text-zinc-700 hover:text-zinc-400 transition-colors">
+                        {f.url.replace(/^https?:\/\//, '').replace(/\/$/, '')} ↗
+                      </a>
+                    )}
+                  </div>
+                  <button
+                    onClick={() => handleVoto(f.id)}
+                    disabled={!userId || periodo !== 'geral'}
+                    title={!userId ? 'Entre para votar' : periodo !== 'geral' ? 'Disponível apenas no ranking geral' : jaVotou ? 'Remover voto' : 'Votar'}
+                    className={`shrink-0 flex flex-col items-center justify-center gap-0.5 w-12 h-12 rounded-xl border transition-all mt-0.5 ${
+                      jaVotou && periodo === 'geral'
+                        ? 'border-green-500/50 bg-green-500/15 text-green-400'
+                        : userId && periodo === 'geral'
+                          ? 'border-zinc-700 text-zinc-500 hover:border-zinc-400 hover:text-white'
+                          : 'border-zinc-800 text-zinc-700 cursor-not-allowed'
+                    }`}
+                  >
+                    <svg className="w-4 h-4" fill={jaVotou && periodo === 'geral' ? 'currentColor' : 'none'} stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
+                    </svg>
+                    {temVotos && (
+                      <span className="text-[10px] font-semibold tabular-nums leading-none">{f.votos_cat}</span>
+                    )}
+                  </button>
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      )}
+    </>
+  )
+}
+
+/* ────────────────────────────────────────────
+   Aba Gráficos
+──────────────────────────────────────────── */
+function AbaGraficos({
+  ferramentas,
+  categorias,
+  categoriaAtiva,
+  grupoAtivo,
+  votosGeral,
+  votosSemana,
+  votosMes,
+  votosDiario,
+}: {
+  ferramentas: Ferramenta[]
+  categorias: Categoria[]
+  categoriaAtiva: string
+  grupoAtivo: 'modelo' | 'ferramenta'
+  votosGeral: VotoContagem[]
+  votosSemana: VotoContagem[]
+  votosMes: VotoContagem[]
+  votosDiario: VotoDiario[]
+}) {
+  const [graficoCat, setGraficoCat] = useState(categoriaAtiva)
+
+  const ferrsGrupo = ferramentas.filter(f => f.grupo === grupoAtivo)
+
+  // Top 3 por categoria — geral
+  const top3PorCategoria = useMemo(() => {
+    return categorias.map(cat => {
+      const itens = ferrsGrupo
+        .map(f => ({
+          ...f,
+          votos: votosGeral.find(v => v.ferramenta_id === f.id && v.categoria_uso_id === cat.id)?.total_votos ?? 0,
+        }))
+        .filter(f => f.votos > 0)
+        .sort((a, b) => b.votos - a.votos)
+        .slice(0, 3)
+      return { cat, itens }
+    }).filter(r => r.itens.length > 0)
+  }, [ferrsGrupo, categorias, votosGeral])
+
+  // Comparativo geral / mês / semana para a categoria selecionada
+  const comparativo = useMemo(() => {
+    return ferrsGrupo
+      .map(f => ({
+        ...f,
+        geral:  votosGeral.find(v => v.ferramenta_id === f.id && v.categoria_uso_id === graficoCat)?.total_votos ?? 0,
+        mes:    votosMes.find(v => v.ferramenta_id === f.id && v.categoria_uso_id === graficoCat)?.total_votos ?? 0,
+        semana: votosSemana.find(v => v.ferramenta_id === f.id && v.categoria_uso_id === graficoCat)?.total_votos ?? 0,
+      }))
+      .filter(f => f.geral > 0)
+      .sort((a, b) => b.geral - a.geral)
+      .slice(0, 6)
+  }, [ferrsGrupo, graficoCat, votosGeral, votosMes, votosSemana])
+
+  const maxComp = Math.max(...comparativo.map(f => f.geral), 1)
+
+  // Evolução histórica — top 5 ferramentas da categoria ativa (por votos geral)
+  const top5ids = useMemo(() => {
+    return ferrsGrupo
+      .map(f => ({
+        id: f.id,
+        nome: f.nome,
+        total: votosGeral.find(v => v.ferramenta_id === f.id && v.categoria_uso_id === graficoCat)?.total_votos ?? 0,
+      }))
+      .filter(f => f.total > 0)
+      .sort((a, b) => b.total - a.total)
+      .slice(0, 5)
+  }, [ferrsGrupo, graficoCat, votosGeral])
+
+  // Gera série temporal — acumulado por ferramenta, último 60 dias
+  const serieHistorica = useMemo(() => {
+    if (top5ids.length === 0 || votosDiario.length === 0) return { dias: [], series: [] }
+
+    const diasSet = new Set<string>()
+    votosDiario
+      .filter(v => v.categoria_uso_id === graficoCat && top5ids.some(t => t.id === v.ferramenta_id))
+      .forEach(v => diasSet.add(v.dia))
+
+    const dias = Array.from(diasSet).sort()
+    if (dias.length === 0) return { dias: [], series: [] }
+
+    // Acumulado por ferramenta ao longo dos dias
+    const series = top5ids.map((t, colorIdx) => {
+      let acumulado = 0
+      const pontos = dias.map(dia => {
+        const reg = votosDiario.find(v => v.ferramenta_id === t.id && v.categoria_uso_id === graficoCat && v.dia === dia)
+        acumulado += reg?.total_votos ?? 0
+        return acumulado
+      })
+      return { id: t.id, nome: t.nome, pontos, cor: LINHA_CORES[colorIdx % LINHA_CORES.length] }
+    })
+
+    return { dias, series }
+  }, [top5ids, votosDiario, graficoCat])
+
+  const graficoCatNome = categorias.find(c => c.id === graficoCat)?.nome ?? ''
+
+  return (
+    <div className="space-y-8">
+
+      {/* Seletor de categoria para os gráficos */}
+      <div className="flex items-center gap-2 flex-wrap">
+        <span className="text-xs text-zinc-500 shrink-0">Categoria:</span>
+        {categorias.map(cat => (
+          <button
+            key={cat.id}
+            onClick={() => setGraficoCat(cat.id)}
+            className={`text-xs px-3 py-1.5 rounded-full border transition-colors ${
+              graficoCat === cat.id
+                ? 'border-green-500/50 text-green-300 bg-green-500/10'
+                : 'border-zinc-800 text-zinc-500 hover:text-zinc-300 hover:border-zinc-700'
+            }`}
+          >
+            {cat.nome}
+          </button>
+        ))}
+      </div>
+
+      {/* ── Gráfico 1: Comparativo geral / mês / semana ── */}
+      <section>
+        <h3 className="text-sm font-semibold text-white mb-1">
+          Comparativo de períodos
+          <span className="text-zinc-500 font-normal ml-1.5">· {graficoCatNome}</span>
+        </h3>
+        <p className="text-xs text-zinc-600 mb-4">Quantos votos cada ferramenta recebeu no total, no último mês e na última semana</p>
+
+        {comparativo.length === 0 ? (
+          <EmptyChart />
+        ) : (
+          <div className="space-y-3">
+            {comparativo.map((f, i) => (
+              <div key={f.id} className="p-4 rounded-xl border border-zinc-800 bg-zinc-900/20">
+                <div className="flex items-center gap-3 mb-3">
+                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 font-bold text-xs border ${
+                    grupoAtivo === 'modelo'
+                      ? 'bg-violet-500/15 border-violet-500/20 text-violet-300'
+                      : 'bg-blue-500/15 border-blue-500/20 text-blue-300'
+                  }`}>{f.nome[0]?.toUpperCase()}</div>
+                  <span className="text-sm font-medium text-white">{f.nome}</span>
+                  <span className={`ml-auto text-xs font-bold tabular-nums ${i === 0 ? 'text-yellow-400' : i === 1 ? 'text-zinc-300' : 'text-zinc-500'}`}>
+                    #{i + 1}
+                  </span>
+                </div>
+
+                {/* Barras triplas */}
+                <div className="space-y-2">
+                  {[
+                    { label: 'Geral', value: f.geral, color: 'bg-green-500' },
+                    { label: '30 dias', value: f.mes, color: 'bg-blue-400' },
+                    { label: '7 dias', value: f.semana, color: 'bg-violet-400' },
+                  ].map(b => (
+                    <div key={b.label} className="flex items-center gap-2">
+                      <span className="text-[11px] text-zinc-600 w-14 shrink-0">{b.label}</span>
+                      <div className="flex-1 h-1.5 rounded-full bg-zinc-800 overflow-hidden">
+                        <div
+                          className={`h-full rounded-full transition-all duration-700 ${b.color}`}
+                          style={{ width: maxComp > 0 ? `${Math.max((b.value / maxComp) * 100, b.value > 0 ? 2 : 0)}%` : '0%' }}
+                        />
+                      </div>
+                      <span className="text-[11px] text-zinc-500 tabular-nums w-8 text-right shrink-0">{b.value}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
+
+      {/* ── Gráfico 2: Top 3 por categoria — visão geral ── */}
+      <section>
+        <h3 className="text-sm font-semibold text-white mb-1">Top 3 por categoria</h3>
+        <p className="text-xs text-zinc-600 mb-4">
+          As três {grupoAtivo === 'modelo' ? 'modelos' : 'ferramentas'} mais votadas em cada perfil ou tipo de uso
+        </p>
+
+        {top3PorCategoria.length === 0 ? (
+          <EmptyChart />
+        ) : (
+          <div className="grid sm:grid-cols-2 gap-3">
+            {top3PorCategoria.map(({ cat, itens }) => {
+              const maxV = itens[0]?.votos ?? 1
+              return (
+                <div key={cat.id} className="p-4 rounded-xl border border-zinc-800 bg-zinc-900/20">
+                  <p className="text-xs font-semibold text-zinc-400 mb-3 flex items-center gap-1.5">
+                    <span className="w-1.5 h-1.5 rounded-full bg-green-500 shrink-0" />
+                    {cat.nome}
+                    <span className="text-zinc-700 font-normal ml-auto">{cat.tipo_categoria === 'perfil' ? 'Perfil' : 'Uso'}</span>
+                  </p>
+                  <div className="space-y-2">
+                    {itens.map((f, idx) => (
+                      <div key={f.id} className="flex items-center gap-2">
+                        <span className={`text-xs font-black w-4 text-center shrink-0 ${idx === 0 ? 'text-yellow-400' : idx === 1 ? 'text-zinc-400' : 'text-amber-600'}`}>
+                          {idx + 1}
+                        </span>
+                        <span className="text-xs text-zinc-300 truncate flex-1">{f.nome}</span>
+                        <div className="w-20 h-1.5 rounded-full bg-zinc-800 overflow-hidden shrink-0">
+                          <div
+                            className={`h-full rounded-full ${idx === 0 ? 'bg-yellow-400' : idx === 1 ? 'bg-zinc-400' : 'bg-amber-600'}`}
+                            style={{ width: `${Math.max((f.votos / maxV) * 100, 8)}%` }}
+                          />
+                        </div>
+                        <span className="text-[11px] text-zinc-600 tabular-nums w-6 text-right shrink-0">{f.votos}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        )}
+      </section>
+
+      {/* ── Gráfico 3: Evolução histórica (acumulado) ── */}
+      <section>
+        <h3 className="text-sm font-semibold text-white mb-1">
+          Evolução acumulada
+          <span className="text-zinc-500 font-normal ml-1.5">· {graficoCatNome}</span>
+        </h3>
+        <p className="text-xs text-zinc-600 mb-4">Crescimento acumulado de votos ao longo do tempo para as top 5 ferramentas</p>
+
+        {serieHistorica.dias.length === 0 ? (
+          <EmptyChart mensagem="Dados históricos serão exibidos conforme os votos acumulam. Volte em alguns dias!" />
+        ) : (
+          <GraficoLinha dias={serieHistorica.dias} series={serieHistorica.series} />
+        )}
+      </section>
+
+    </div>
+  )
+}
+
+/* ────────────────────────────────────────────
+   Gráfico de linha SVG puro
+──────────────────────────────────────────── */
+function GraficoLinha({
+  dias,
+  series,
+}: {
+  dias: string[]
+  series: { id: string; nome: string; pontos: number[]; cor: { stroke: string; bg: string } }[]
+}) {
+  const W = 600
+  const H = 180
+  const PAD = { top: 12, right: 16, bottom: 28, left: 32 }
+  const chartW = W - PAD.left - PAD.right
+  const chartH = H - PAD.top - PAD.bottom
+
+  const maxVal = Math.max(...series.flatMap(s => s.pontos), 1)
+
+  function x(idx: number) {
+    return PAD.left + (dias.length <= 1 ? chartW / 2 : (idx / (dias.length - 1)) * chartW)
+  }
+  function y(val: number) {
+    return PAD.top + chartH - (val / maxVal) * chartH
+  }
+
+  // Eixo Y: 4 linhas de grade
+  const yTicks = [0, 0.25, 0.5, 0.75, 1].map(t => Math.round(t * maxVal))
+
+  // Eixo X: mostrar ~5 labels
+  const xStep = Math.max(1, Math.floor(dias.length / 5))
+  const xLabels = dias.filter((_, i) => i % xStep === 0 || i === dias.length - 1)
+
+  function formatDia(iso: string) {
+    const [, m, d] = iso.split('-')
+    return `${d}/${m}`
+  }
+
+  return (
+    <div className="rounded-xl border border-zinc-800 bg-zinc-900/20 p-4">
+      {/* Legenda */}
+      <div className="flex flex-wrap gap-3 mb-4">
+        {series.map(s => (
+          <div key={s.id} className="flex items-center gap-1.5">
+            <span className={`w-3 h-1.5 rounded-full inline-block ${s.cor.bg}`} />
+            <span className="text-xs text-zinc-400">{s.nome}</span>
+          </div>
+        ))}
+      </div>
+
+      {/* SVG responsivo */}
+      <div className="w-full overflow-x-auto">
+        <svg viewBox={`0 0 ${W} ${H}`} className="w-full" style={{ minWidth: 280 }}>
+          {/* Grade */}
+          {yTicks.map(tick => (
+            <g key={tick}>
+              <line
+                x1={PAD.left} y1={y(tick)} x2={W - PAD.right} y2={y(tick)}
+                stroke="#27272a" strokeWidth={1}
+              />
+              <text x={PAD.left - 6} y={y(tick) + 4} textAnchor="end" fontSize={9} fill="#52525b">
+                {tick}
+              </text>
+            </g>
+          ))}
+
+          {/* Labels X */}
+          {xLabels.map(dia => {
+            const idx = dias.indexOf(dia)
+            return (
+              <text key={dia} x={x(idx)} y={H - 6} textAnchor="middle" fontSize={9} fill="#52525b">
+                {formatDia(dia)}
+              </text>
+            )
+          })}
+
+          {/* Linhas */}
+          {series.map(s => {
+            const d = s.pontos
+              .map((v, i) => `${i === 0 ? 'M' : 'L'}${x(i).toFixed(1)},${y(v).toFixed(1)}`)
+              .join(' ')
+            return (
+              <path
+                key={s.id}
+                d={d}
+                fill="none"
+                stroke={s.cor.stroke}
+                strokeWidth={2}
+                strokeLinejoin="round"
+                strokeLinecap="round"
+              />
+            )
+          })}
+
+          {/* Pontos finais */}
+          {series.map(s => {
+            const last = s.pontos.length - 1
+            return (
+              <circle
+                key={s.id}
+                cx={x(last)}
+                cy={y(s.pontos[last])}
+                r={3}
+                fill={s.cor.stroke}
+              />
+            )
+          })}
+        </svg>
+      </div>
+    </div>
+  )
+}
+
+function EmptyChart({ mensagem }: { mensagem?: string }) {
+  return (
+    <div className="text-center py-12 border border-dashed border-zinc-800 rounded-2xl">
+      <svg className="w-8 h-8 text-zinc-700 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+      </svg>
+      <p className="text-zinc-600 text-sm">
+        {mensagem ?? 'Sem dados suficientes para este gráfico ainda.'}
+      </p>
+    </div>
+  )
+}
+
+/* ────────────────────────────────────────────
+   Sugerir ferramenta
+──────────────────────────────────────────── */
 function ContatoSugestao() {
   return (
     <div className="space-y-6">

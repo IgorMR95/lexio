@@ -13,6 +13,7 @@ export default async function RankingPage() {
     { data: votosGeral },
     { data: votosSemana },
     { data: votosMes },
+    { data: votosDiario },
   ] = await Promise.all([
     (supabase as any)
       .from('ferramentas')
@@ -34,6 +35,10 @@ export default async function RankingPage() {
     (supabase as any)
       .from('ferramenta_votos_mes')
       .select('ferramenta_id, categoria_uso_id, total_votos'),
+    (supabase as any)
+      .from('ferramenta_votos_diario')
+      .select('ferramenta_id, categoria_uso_id, dia, total_votos')
+      .order('dia', { ascending: true }),
   ])
 
   let meusVotos: { ferramenta_id: string; categoria_uso_id: string }[] = []
@@ -52,6 +57,7 @@ export default async function RankingPage() {
       votosGeral={votosGeral ?? []}
       votosSemana={votosSemana ?? []}
       votosMes={votosMes ?? []}
+      votosDiario={votosDiario ?? []}
       meusVotos={meusVotos}
       userId={user?.id ?? null}
     />

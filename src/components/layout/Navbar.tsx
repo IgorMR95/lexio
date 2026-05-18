@@ -15,10 +15,12 @@ export function Navbar() {
   const [profile, setProfile] = useState<Profile | null>(null)
   const [menuOpen, setMenuOpen] = useState(false)
   const [baseOpen, setBaseOpen] = useState(false)
+  const [perfilOpen, setPerfilOpen] = useState(false)
   const [notificacoes, setNotificacoes] = useState<any[]>([])
   const [naoLidas, setNaoLidas] = useState(0)
   const supabase = createClient()
   const baseRef = useRef<HTMLDivElement>(null)
+  const perfilRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => {
@@ -44,11 +46,13 @@ export function Navbar() {
     return () => listener.subscription.unsubscribe()
   }, [])
 
-  // Close dropdown on outside click
   useEffect(() => {
     function handleClick(e: MouseEvent) {
       if (baseRef.current && !baseRef.current.contains(e.target as Node)) {
         setBaseOpen(false)
+      }
+      if (perfilRef.current && !perfilRef.current.contains(e.target as Node)) {
+        setPerfilOpen(false)
       }
     }
     document.addEventListener('mousedown', handleClick)
@@ -76,15 +80,7 @@ export function Navbar() {
 
   const isAdmin = profile?.role === 'admin'
   const isBaseActive = pathname.startsWith('/prompts') || pathname.startsWith('/skills')
-
-  const otherLinks = [
-    { href: '/ranking', label: 'Ranking de IAs' },
-    { href: '/academy', label: 'Academy' },
-    { href: '/faq', label: 'FAQ' },
-    ...(user ? [{ href: '/perfil', label: 'Perfil' }] : []),
-    ...(user ? [{ href: '/alimentacao', label: 'Alimentação' }] : []),
-    ...(isAdmin ? [{ href: '/gestao', label: 'Gestão' }] : []),
-  ]
+  const isPerfilActive = pathname.startsWith('/perfil') || pathname.startsWith('/alimentacao') || pathname === '/faq'
 
   return (
     <header className="border-b border-zinc-800 bg-zinc-950/90 backdrop-blur-sm sticky top-0 z-50">
@@ -99,7 +95,7 @@ export function Navbar() {
             {/* Base de Conhecimento dropdown */}
             <div ref={baseRef} className="relative">
               <button
-                onClick={() => setBaseOpen(o => !o)}
+                onClick={() => { setBaseOpen(o => !o); setPerfilOpen(false) }}
                 className={`flex items-center gap-1 text-sm transition-colors ${isBaseActive ? 'text-white font-medium' : 'text-zinc-400 hover:text-white'}`}
               >
                 Base de Conhecimento
@@ -146,15 +142,110 @@ export function Navbar() {
               )}
             </div>
 
-            {otherLinks.map(link => (
+            {/* Ranking de IAs */}
+            <Link
+              href="/ranking"
+              className={`text-sm transition-colors ${pathname.startsWith('/ranking') ? 'text-white font-medium' : 'text-zinc-400 hover:text-white'}`}
+            >
+              Ranking de IAs
+            </Link>
+
+            {/* Academy */}
+            <Link
+              href="/academy"
+              className={`text-sm transition-colors ${pathname.startsWith('/academy') ? 'text-white font-medium' : 'text-zinc-400 hover:text-white'}`}
+            >
+              Academy
+            </Link>
+
+            {/* Feed — só para usuários logados */}
+            {user && (
               <Link
-                key={link.href}
-                href={link.href}
-                className={`text-sm transition-colors ${pathname.startsWith(link.href) ? 'text-white font-medium' : 'text-zinc-400 hover:text-white'}`}
+                href="/feed"
+                className={`text-sm transition-colors ${pathname.startsWith('/feed') ? 'text-white font-medium' : 'text-zinc-400 hover:text-white'}`}
               >
-                {link.label}
+                Feed
               </Link>
-            ))}
+            )}
+
+            {/* Perfil dropdown — só para usuários logados */}
+            {user && (
+              <div ref={perfilRef} className="relative">
+                <button
+                  onClick={() => { setPerfilOpen(o => !o); setBaseOpen(false) }}
+                  className={`flex items-center gap-1 text-sm transition-colors ${isPerfilActive ? 'text-white font-medium' : 'text-zinc-400 hover:text-white'}`}
+                >
+                  Perfil
+                  <svg className={`w-3.5 h-3.5 transition-transform ${perfilOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  </svg>
+                </button>
+
+                {perfilOpen && (
+                  <div className="absolute right-0 top-8 w-52 rounded-xl border border-zinc-800 bg-zinc-950 shadow-2xl shadow-black/50 overflow-hidden z-50">
+                    <div className="p-1.5">
+                      <Link
+                        href="/perfil"
+                        onClick={() => setPerfilOpen(false)}
+                        className={`flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-zinc-900 transition-colors text-sm ${pathname.startsWith('/perfil') ? 'bg-zinc-900 text-white' : 'text-zinc-300'}`}
+                      >
+                        <svg className="w-4 h-4 text-zinc-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                        </svg>
+                        Meu perfil
+                      </Link>
+                      <Link
+                        href="/alimentacao"
+                        onClick={() => setPerfilOpen(false)}
+                        className={`flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-zinc-900 transition-colors text-sm ${pathname.startsWith('/alimentacao') ? 'bg-zinc-900 text-white' : 'text-zinc-300'}`}
+                      >
+                        <svg className="w-4 h-4 text-zinc-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                        </svg>
+                        Alimentação
+                      </Link>
+                      <div className="my-1 border-t border-zinc-800/70" />
+                      <Link
+                        href="/faq"
+                        onClick={() => setPerfilOpen(false)}
+                        className={`flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-zinc-900 transition-colors text-sm ${pathname === '/faq' ? 'bg-zinc-900 text-white' : 'text-zinc-300'}`}
+                      >
+                        <svg className="w-4 h-4 text-zinc-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        FAQ
+                      </Link>
+                      {isAdmin && (
+                        <>
+                          <div className="my-1 border-t border-zinc-800/70" />
+                          <Link
+                            href="/gestao"
+                            onClick={() => setPerfilOpen(false)}
+                            className={`flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-zinc-900 transition-colors text-sm ${pathname.startsWith('/gestao') ? 'bg-zinc-900 text-white' : 'text-zinc-300'}`}
+                          >
+                            <svg className="w-4 h-4 text-green-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                            </svg>
+                            <span className="text-green-400">Gestão</span>
+                          </Link>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Links para visitantes não logados */}
+            {!user && (
+              <Link
+                href="/faq"
+                className={`text-sm transition-colors ${pathname === '/faq' ? 'text-white font-medium' : 'text-zinc-400 hover:text-white'}`}
+              >
+                FAQ
+              </Link>
+            )}
           </nav>
 
           <div className="flex items-center gap-3">
@@ -198,11 +289,42 @@ export function Navbar() {
               Skills MD
             </Link>
             <div className="border-t border-zinc-800/50 my-1" />
-            {otherLinks.map(link => (
-              <Link key={link.href} href={link.href} onClick={() => setMenuOpen(false)} className={`text-sm py-2 px-2 rounded-lg transition-colors ${pathname.startsWith(link.href) ? 'text-white bg-zinc-900' : 'text-zinc-400 hover:text-white'}`}>
-                {link.label}
+            <Link href="/ranking" onClick={() => setMenuOpen(false)} className={`text-sm py-2 px-2 rounded-lg transition-colors ${pathname.startsWith('/ranking') ? 'text-white bg-zinc-900' : 'text-zinc-400 hover:text-white'}`}>
+              Ranking de IAs
+            </Link>
+            <Link href="/academy" onClick={() => setMenuOpen(false)} className={`text-sm py-2 px-2 rounded-lg transition-colors ${pathname.startsWith('/academy') ? 'text-white bg-zinc-900' : 'text-zinc-400 hover:text-white'}`}>
+              Academy
+            </Link>
+            {user && (
+              <Link href="/feed" onClick={() => setMenuOpen(false)} className={`text-sm py-2 px-2 rounded-lg transition-colors ${pathname.startsWith('/feed') ? 'text-white bg-zinc-900' : 'text-zinc-400 hover:text-white'}`}>
+                Feed
               </Link>
-            ))}
+            )}
+            {!user && (
+              <Link href="/faq" onClick={() => setMenuOpen(false)} className={`text-sm py-2 px-2 rounded-lg transition-colors ${pathname === '/faq' ? 'text-white bg-zinc-900' : 'text-zinc-400 hover:text-white'}`}>
+                FAQ
+              </Link>
+            )}
+            {user && (
+              <>
+                <div className="border-t border-zinc-800/50 my-1" />
+                <p className="text-xs font-semibold text-zinc-600 uppercase tracking-wider px-1 py-1.5">Perfil</p>
+                <Link href="/perfil" onClick={() => setMenuOpen(false)} className={`text-sm py-2 px-2 rounded-lg transition-colors ${pathname.startsWith('/perfil') ? 'text-white bg-zinc-900' : 'text-zinc-400 hover:text-white'}`}>
+                  Meu perfil
+                </Link>
+                <Link href="/alimentacao" onClick={() => setMenuOpen(false)} className={`text-sm py-2 px-2 rounded-lg transition-colors ${pathname.startsWith('/alimentacao') ? 'text-white bg-zinc-900' : 'text-zinc-400 hover:text-white'}`}>
+                  Alimentação
+                </Link>
+                <Link href="/faq" onClick={() => setMenuOpen(false)} className={`text-sm py-2 px-2 rounded-lg transition-colors ${pathname === '/faq' ? 'text-white bg-zinc-900' : 'text-zinc-400 hover:text-white'}`}>
+                  FAQ
+                </Link>
+                {isAdmin && (
+                  <Link href="/gestao" onClick={() => setMenuOpen(false)} className={`text-sm py-2 px-2 rounded-lg transition-colors ${pathname.startsWith('/gestao') ? 'text-white bg-zinc-900' : 'text-zinc-400 hover:text-white'}`}>
+                    Gestão
+                  </Link>
+                )}
+              </>
+            )}
             {user && (
               <div className="pt-2 border-t border-zinc-800 mt-1">
                 {isAdmin

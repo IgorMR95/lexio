@@ -39,22 +39,6 @@ interface Props {
   userId: string | null
 }
 
-const TIPO_LABELS: Record<string, string> = {
-  llm:        'Modelo de IA',
-  app:        'Aplicativo',
-  extensao:   'Extensão',
-  plataforma: 'Plataforma',
-  outro:      'Outro',
-}
-
-const TIPO_COLOR: Record<string, string> = {
-  llm:        'bg-violet-500/10 text-violet-400 border-violet-500/20',
-  app:        'bg-blue-500/10 text-blue-400 border-blue-500/20',
-  extensao:   'bg-amber-500/10 text-amber-400 border-amber-500/20',
-  plataforma: 'bg-green-500/10 text-green-400 border-green-500/20',
-  outro:      'bg-zinc-800 text-zinc-400 border-zinc-700',
-}
-
 type Periodo = 'geral' | 'mes' | 'semana'
 type EixoFiltro = 'perfil' | 'uso'
 
@@ -63,6 +47,12 @@ function buildVotosMap(votos: VotoContagem[]) {
   for (const v of votos) m[`${v.ferramenta_id}::${v.categoria_uso_id}`] = v.total_votos
   return m
 }
+
+// Cores por posição
+const PODIO_BG = ['bg-yellow-500/10 border-yellow-500/30', 'bg-zinc-800/60 border-zinc-700', 'bg-amber-900/20 border-amber-700/30']
+const PODIO_NUM = ['text-yellow-400', 'text-zinc-300', 'text-amber-500']
+const PODIO_BAR = ['bg-yellow-400', 'bg-zinc-400', 'bg-amber-600']
+const DEFAULT_BAR = 'bg-green-500'
 
 export function RankingClient({
   ferramentas,
@@ -85,15 +75,12 @@ export function RankingClient({
   const [mostrarSugerir, setMostrarSugerir] = useState(false)
   const [mostrarExplicacao, setMostrarExplicacao] = useState(false)
 
-  // Troca eixo e reseta categoria ativa
   function handleEixo(novoEixo: EixoFiltro) {
     setEixo(novoEixo)
-    if (novoEixo === 'perfil') setCategoriaAtiva(perfis[0]?.id ?? '')
-    else setCategoriaAtiva(usos[0]?.id ?? '')
+    setCategoriaAtiva(novoEixo === 'perfil' ? (perfis[0]?.id ?? '') : (usos[0]?.id ?? ''))
   }
 
-  // Votos conforme período selecionado (semana/mês usam dados do server; geral é mutável via votos locais)
-  const votosAtivos: VotoContagem[] = useMemo(() => {
+  const votosAtivos = useMemo(() => {
     if (periodo === 'semana') return votosSemana
     if (periodo === 'mes')    return votosMes
     return votosGeralState
@@ -101,65 +88,44 @@ export function RankingClient({
 
   const votosMap = useMemo(() => buildVotosMap(votosAtivos), [votosAtivos])
 
-  const rankingAtual = useMemo(() => {
-    return ferramentas
+  const rankingAtual = useMemo(() =>
+    ferramentas
       .filter(f => f.grupo === grupoAtivo)
-      .map(f => ({
-        ...f,
-        votos_cat: votosMap[`${f.id}::${categoriaAtiva}`] ?? 0,
-      }))
-      .sort((a, b) => b.votos_cat - a.votos_cat)
-  }, [ferramentas, grupoAtivo, categoriaAtiva, votosMap])
+      .map(f => ({ ...f, votos_cat: votosMap[`${f.id}::${categoriaAtiva}`] ?? 0 }))
+      .sort((a, b) => b.votos_cat - a.votos_cat),
+  [ferramentas, grupoAtivo, categoriaAtiva, votosMap])
+
+  const maxVotos = rankingAtual[0]?.votos_cat ?? 0
+  const totalVotos = votosGeralState.reduce((s, v) => s + v.total_votos, 0)
 
   const handleVoto = async (ferramentaId: string) => {
     if (!userId || periodo !== 'geral') return
     const jaVotou = meusVotos.some(v => v.ferramenta_id === ferramentaId && v.categoria_uso_id === categoriaAtiva)
     const supabase = createClient()
-
     if (jaVotou) {
-      await (supabase as any)
-        .from('ferramenta_votos')
-        .delete()
-        .eq('ferramenta_id', ferramentaId)
-        .eq('categoria_uso_id', categoriaAtiva)
-        .eq('user_id', userId)
+      await (supabase as any).from('ferramenta_votos').delete()
+        .eq('ferramenta_id', ferramentaId).eq('categoria_uso_id', categoriaAtiva).eq('user_id', userId)
       setMeusVotos(prev => prev.filter(v => !(v.ferramenta_id === ferramentaId && v.categoria_uso_id === categoriaAtiva)))
       setVotosGeralState(prev => prev.map(v =>
         v.ferramenta_id === ferramentaId && v.categoria_uso_id === categoriaAtiva
-          ? { ...v, total_votos: Math.max(0, v.total_votos - 1) }
-          : v
+          ? { ...v, total_votos: Math.max(0, v.total_votos - 1) } : v
       ))
     } else {
-      await (supabase as any)
-        .from('ferramenta_votos')
-        .insert({ ferramenta_id: ferramentaId, categoria_uso_id: categoriaAtiva, user_id: userId })
+      await (supabase as any).from('ferramenta_votos').insert({ ferramenta_id: ferramentaId, categoria_uso_id: categoriaAtiva, user_id: userId })
       setMeusVotos(prev => [...prev, { ferramenta_id: ferramentaId, categoria_uso_id: categoriaAtiva }])
       setVotosGeralState(prev => {
-        const existing = prev.find(v => v.ferramenta_id === ferramentaId && v.categoria_uso_id === categoriaAtiva)
-        if (existing) {
-          return prev.map(v =>
-            v.ferramenta_id === ferramentaId && v.categoria_uso_id === categoriaAtiva
-              ? { ...v, total_votos: v.total_votos + 1 } : v
-          )
-        }
+        const ex = prev.find(v => v.ferramenta_id === ferramentaId && v.categoria_uso_id === categoriaAtiva)
+        if (ex) return prev.map(v => v.ferramenta_id === ferramentaId && v.categoria_uso_id === categoriaAtiva ? { ...v, total_votos: v.total_votos + 1 } : v)
         return [...prev, { ferramenta_id: ferramentaId, categoria_uso_id: categoriaAtiva, total_votos: 1 }]
       })
     }
   }
 
-  const totalVotos = votosGeralState.reduce((s, v) => s + v.total_votos, 0)
-  const categoriaInfo = categorias.find(c => c.id === categoriaAtiva)
-
   if (mostrarSugerir) {
     return (
       <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
-        <button
-          onClick={() => setMostrarSugerir(false)}
-          className="text-sm text-zinc-500 hover:text-white transition-colors mb-6 flex items-center gap-1.5"
-        >
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-          </svg>
+        <button onClick={() => setMostrarSugerir(false)} className="text-sm text-zinc-500 hover:text-white transition-colors mb-6 flex items-center gap-1.5">
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
           Voltar ao ranking
         </button>
         <ContatoSugestao />
@@ -167,347 +133,237 @@ export function RankingClient({
     )
   }
 
+  const categoriasAtivas = eixo === 'perfil' ? perfis : usos
+
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+    <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+
       {/* Header */}
-      <div className="mb-6 flex items-start justify-between flex-wrap gap-4">
-        <div>
+      <div className="mb-8">
+        <div className="flex items-start justify-between gap-4 flex-wrap mb-1">
           <h1 className="text-2xl font-bold text-white">Ranking de IAs no Direito</h1>
-          <p className="text-sm text-zinc-500 mt-1">
-            As melhores IAs e ferramentas avaliadas por profissionais jurídicos brasileiros
-          </p>
-        </div>
-        <div className="flex items-center gap-3">
-          <span className="text-xs text-zinc-600">
-            {ferramentas.length} ferramentas · {totalVotos} votos
-          </span>
-          <button
-            onClick={() => setMostrarSugerir(true)}
-            className="text-xs px-3 py-1.5 rounded-lg border border-zinc-700 text-zinc-400 hover:text-white hover:border-zinc-500 transition-colors"
-          >
+          <button onClick={() => setMostrarSugerir(true)} className="text-xs px-3 py-1.5 rounded-lg border border-zinc-700 text-zinc-500 hover:text-white hover:border-zinc-500 transition-colors">
             Sugerir ferramenta
           </button>
         </div>
+        <p className="text-sm text-zinc-500">
+          Avaliadas por advogados, magistrados, promotores e defensores · {totalVotos} votos registrados
+        </p>
       </div>
 
-      {/* Dropdown explicativo */}
-      <div className="mb-6 border border-zinc-800 rounded-xl overflow-hidden">
+      {/* Toggle Modelos / Ferramentas — destaque principal */}
+      <div className="flex gap-2 mb-6">
+        {(['modelo', 'ferramenta'] as const).map(g => (
+          <button
+            key={g}
+            onClick={() => setGrupoAtivo(g)}
+            className={`flex-1 py-3 rounded-xl text-sm font-semibold transition-all border ${
+              grupoAtivo === g
+                ? g === 'modelo'
+                  ? 'bg-violet-500/10 border-violet-500/30 text-violet-300'
+                  : 'bg-blue-500/10 border-blue-500/30 text-blue-300'
+                : 'border-zinc-800 text-zinc-500 hover:text-zinc-300 hover:border-zinc-700 bg-zinc-900/30'
+            }`}
+          >
+            {g === 'modelo' ? 'Modelos de IA' : 'Ferramentas'}
+            <span className="block text-xs font-normal mt-0.5 opacity-60">
+              {g === 'modelo' ? 'ChatGPT, Claude, Gemini...' : 'Apps e plataformas jurídicas'}
+            </span>
+          </button>
+        ))}
+      </div>
+
+      {/* Filtros: eixo + categorias + período — tudo numa linha compacta */}
+      <div className="space-y-3 mb-8">
+        {/* Eixo */}
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="text-xs text-zinc-600 shrink-0">Ver por:</span>
+          {(['perfil', 'uso'] as EixoFiltro[]).map(e => (
+            <button
+              key={e}
+              onClick={() => handleEixo(e)}
+              className={`text-xs px-3 py-1 rounded-full border transition-colors ${
+                eixo === e ? 'border-zinc-500 text-white bg-zinc-800' : 'border-zinc-800 text-zinc-500 hover:text-zinc-300'
+              }`}
+            >
+              {e === 'perfil' ? 'Perfil profissional' : 'Tipo de uso'}
+            </button>
+          ))}
+        </div>
+
+        {/* Categorias do eixo ativo */}
+        <div className="flex items-center gap-2 flex-wrap">
+          {categoriasAtivas.map(cat => (
+            <button
+              key={cat.id}
+              onClick={() => setCategoriaAtiva(cat.id)}
+              className={`text-xs px-3 py-1.5 rounded-full border transition-colors ${
+                categoriaAtiva === cat.id
+                  ? 'border-green-500/50 text-green-300 bg-green-500/10'
+                  : 'border-zinc-800 text-zinc-500 hover:text-zinc-300 hover:border-zinc-700'
+              }`}
+            >
+              {cat.nome}
+            </button>
+          ))}
+        </div>
+
+        {/* Período */}
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="text-xs text-zinc-600 shrink-0">Período:</span>
+          {([
+            { v: 'geral', l: 'Geral' },
+            { v: 'mes',   l: '30 dias' },
+            { v: 'semana',l: '7 dias' },
+          ] as { v: Periodo; l: string }[]).map(p => (
+            <button
+              key={p.v}
+              onClick={() => setPeriodo(p.v)}
+              className={`text-xs px-3 py-1 rounded-full border transition-colors ${
+                periodo === p.v ? 'border-zinc-500 text-white bg-zinc-800' : 'border-zinc-800 text-zinc-500 hover:text-zinc-300'
+              }`}
+            >
+              {p.l}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Banner login */}
+      {!userId && (
+        <div className="mb-6 px-4 py-3 rounded-xl border border-zinc-800 bg-zinc-900/30 flex items-center justify-between gap-3">
+          <p className="text-sm text-zinc-500">Faça login para votar nos favoritos da sua área</p>
+          <Link href="/login" className="text-sm text-green-400 hover:underline shrink-0 font-medium">Entrar</Link>
+        </div>
+      )}
+
+      {/* Lista */}
+      {rankingAtual.length === 0 ? (
+        <div className="text-center py-20 border border-dashed border-zinc-800 rounded-2xl">
+          <p className="text-zinc-500 text-sm">Nenhum{grupoAtivo === 'modelo' ? ' modelo' : 'a ferramenta'} cadastrado ainda.</p>
+        </div>
+      ) : (
+        <div className="space-y-2">
+          {rankingAtual.map((f, i) => {
+            const jaVotou = meusVotos.some(v => v.ferramenta_id === f.id && v.categoria_uso_id === categoriaAtiva)
+            const pct = maxVotos > 0 ? (f.votos_cat / maxVotos) * 100 : 0
+            const temVotos = f.votos_cat > 0
+            const isPodio = i < 3 && temVotos
+            const barColor = isPodio ? PODIO_BAR[i] : DEFAULT_BAR
+
+            return (
+              <div
+                key={f.id}
+                className={`rounded-2xl border transition-all ${isPodio ? PODIO_BG[i] : 'border-zinc-800/60 bg-zinc-900/20 hover:border-zinc-700'}`}
+              >
+                <div className="flex items-center gap-4 px-4 py-4">
+                  {/* Posição */}
+                  <div className="w-7 text-center shrink-0">
+                    <span className={`text-base font-black ${isPodio ? PODIO_NUM[i] : 'text-zinc-700'}`}>
+                      {temVotos ? i + 1 : '—'}
+                    </span>
+                  </div>
+
+                  {/* Avatar letra */}
+                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 font-bold text-sm border ${
+                    grupoAtivo === 'modelo'
+                      ? 'bg-violet-500/15 border-violet-500/20 text-violet-300'
+                      : 'bg-blue-500/15 border-blue-500/20 text-blue-300'
+                  }`}>
+                    {f.nome[0]?.toUpperCase()}
+                  </div>
+
+                  {/* Info + barra */}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-1.5">
+                      <span className="text-sm font-semibold text-white truncate">{f.nome}</span>
+                      {f.destaque && <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-yellow-500/10 text-yellow-400 border border-yellow-500/20 shrink-0">Destaque</span>}
+                    </div>
+
+                    {/* Barra de votos */}
+                    <div className="flex items-center gap-3">
+                      <div className="flex-1 h-2 rounded-full bg-zinc-800 overflow-hidden">
+                        <div
+                          className={`h-full rounded-full transition-all duration-700 ${barColor}`}
+                          style={{ width: temVotos ? `${Math.max(pct, 4)}%` : '0%' }}
+                        />
+                      </div>
+                      <span className="text-xs text-zinc-500 tabular-nums shrink-0 w-16 text-right">
+                        {temVotos ? `${f.votos_cat} ${f.votos_cat === 1 ? 'voto' : 'votos'}` : 'sem votos'}
+                      </span>
+                    </div>
+
+                    {f.descricao && (
+                      <p className="text-xs text-zinc-600 mt-1.5 line-clamp-1">{f.descricao}</p>
+                    )}
+                  </div>
+
+                  {/* Botão voto */}
+                  <button
+                    onClick={() => handleVoto(f.id)}
+                    disabled={!userId || periodo !== 'geral'}
+                    title={!userId ? 'Entre para votar' : periodo !== 'geral' ? 'Disponível no ranking geral' : jaVotou ? 'Remover voto' : 'Votar'}
+                    className={`shrink-0 w-10 h-10 rounded-xl border flex items-center justify-center transition-all ${
+                      jaVotou && periodo === 'geral'
+                        ? 'border-green-500/50 bg-green-500/15 text-green-400'
+                        : userId && periodo === 'geral'
+                          ? 'border-zinc-700 text-zinc-500 hover:border-zinc-400 hover:text-white'
+                          : 'border-zinc-800 text-zinc-700 cursor-not-allowed'
+                    }`}
+                  >
+                    <svg className="w-4 h-4" fill={jaVotou && periodo === 'geral' ? 'currentColor' : 'none'} stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
+                    </svg>
+                  </button>
+                </div>
+
+                {/* Link externo — apenas 1ª linha, no rodapé do card se existir */}
+                {f.url && (
+                  <div className="px-4 pb-3 -mt-1">
+                    <a href={f.url} target="_blank" rel="noopener noreferrer" className="text-xs text-zinc-700 hover:text-zinc-400 transition-colors">
+                      {f.url.replace(/^https?:\/\//, '').replace(/\/$/, '')} ↗
+                    </a>
+                  </div>
+                )}
+              </div>
+            )
+          })}
+        </div>
+      )}
+
+      {/* Explicação modelos vs ferramentas — no rodapé, fora do fluxo principal */}
+      <div className="mt-12 border border-zinc-800 rounded-2xl overflow-hidden">
         <button
           onClick={() => setMostrarExplicacao(o => !o)}
-          className="w-full flex items-center justify-between px-4 py-3 text-left hover:bg-zinc-900/40 transition-colors"
+          className="w-full flex items-center justify-between px-5 py-4 text-left hover:bg-zinc-900/40 transition-colors"
         >
           <span className="text-sm text-zinc-400">
-            Entenda a diferença entre <span className="text-white font-medium">modelos de IA</span> e <span className="text-white font-medium">ferramentas que usam IA</span>
+            Qual é a diferença entre <span className="text-white">modelos de IA</span> e <span className="text-white">ferramentas</span>?
           </span>
-          <svg
-            className={`w-4 h-4 text-zinc-500 transition-transform shrink-0 ml-3 ${mostrarExplicacao ? 'rotate-180' : ''}`}
-            fill="none" stroke="currentColor" viewBox="0 0 24 24"
-          >
+          <svg className={`w-4 h-4 text-zinc-500 transition-transform shrink-0 ml-3 ${mostrarExplicacao ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
           </svg>
         </button>
         {mostrarExplicacao && (
-          <div className="px-4 pb-4 pt-1 border-t border-zinc-800/60 grid sm:grid-cols-2 gap-4">
+          <div className="px-5 pb-5 pt-1 border-t border-zinc-800/60 grid sm:grid-cols-2 gap-4">
             <div className="p-4 rounded-xl bg-violet-500/5 border border-violet-500/15">
               <p className="text-sm font-semibold text-violet-300 mb-1.5">Modelos de IA</p>
               <p className="text-xs text-zinc-400 leading-relaxed">
-                São os &ldquo;cérebros&rdquo; — softwares que processam linguagem e geram texto. Você interage com eles diretamente por um chat. Exemplos: <span className="text-zinc-300">ChatGPT, Claude, Gemini, Copilot</span>. Você escreve uma instrução e eles respondem. O modelo em si não faz nada além de texto — é a base de tudo.
+                São os &ldquo;cérebros&rdquo; — você interage diretamente via chat. Exemplos: <span className="text-zinc-300">ChatGPT, Claude, Gemini</span>. Escreve uma instrução e eles respondem. Versões gratuitas disponíveis.
               </p>
             </div>
             <div className="p-4 rounded-xl bg-blue-500/5 border border-blue-500/15">
               <p className="text-sm font-semibold text-blue-300 mb-1.5">Ferramentas que usam IA</p>
               <p className="text-xs text-zinc-400 leading-relaxed">
-                São aplicativos construídos <em>por cima</em> de um modelo de IA, com funcionalidades específicas. Exemplos: <span className="text-zinc-300">Clio, Harvey, Detach Legal</span>. Elas conectam o modelo à sua rotina — gerenciam documentos, integram com processos, automatizam tarefas. Costumam ter assinatura paga.
+                Aplicativos construídos <em>por cima</em> de um modelo, com funções específicas. Exemplos: <span className="text-zinc-300">Clio, Harvey, Detach Legal</span>. Integram com sua rotina, geralmente com assinatura paga.
               </p>
             </div>
-            <div className="sm:col-span-2 px-1">
-              <p className="text-xs text-zinc-600 leading-relaxed">
-                Em resumo: o modelo é como o motor de um carro. A ferramenta é o carro inteiro — com painel, GPS e conforto. Para começar, os modelos gratuitos (ChatGPT ou Claude) já são suficientes. As ferramentas fazem sentido quando você tem um fluxo de trabalho repetitivo que pode ser automatizado.
-              </p>
-            </div>
+            <p className="sm:col-span-2 text-xs text-zinc-600 px-1">
+              Analogia: o modelo é o motor. A ferramenta é o carro inteiro. Para começar, modelos gratuitos já são suficientes.
+            </p>
           </div>
         )}
       </div>
-
-      <div className="flex gap-8 flex-col lg:flex-row">
-        {/* Sidebar — filtros */}
-        <aside className="lg:w-56 shrink-0 space-y-6">
-          {/* Eixo de filtro */}
-          <div>
-            <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-2">Filtrar por</p>
-            <div className="flex gap-1 bg-zinc-900 p-1 rounded-lg">
-              <button
-                onClick={() => handleEixo('perfil')}
-                className={`flex-1 py-1.5 rounded-md text-xs font-medium transition-colors ${eixo === 'perfil' ? 'bg-zinc-700 text-white' : 'text-zinc-500 hover:text-zinc-300'}`}
-              >
-                Perfil profissional
-              </button>
-              <button
-                onClick={() => handleEixo('uso')}
-                className={`flex-1 py-1.5 rounded-md text-xs font-medium transition-colors ${eixo === 'uso' ? 'bg-zinc-700 text-white' : 'text-zinc-500 hover:text-zinc-300'}`}
-              >
-                Tipo de uso
-              </button>
-            </div>
-          </div>
-
-          {/* Lista de categorias */}
-          <div>
-            <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-2">
-              {eixo === 'perfil' ? 'Perfil' : 'Uso'}
-            </p>
-            <div className="space-y-1">
-              {(eixo === 'perfil' ? perfis : usos).map(cat => {
-                const totalNaCat = votosGeralState
-                  .filter(v => v.categoria_uso_id === cat.id)
-                  .reduce((s, v) => s + v.total_votos, 0)
-                return (
-                  <button
-                    key={cat.id}
-                    onClick={() => setCategoriaAtiva(cat.id)}
-                    className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-left text-sm transition-all ${
-                      categoriaAtiva === cat.id
-                        ? 'bg-zinc-800 text-white font-medium'
-                        : 'text-zinc-500 hover:text-zinc-300 hover:bg-zinc-900/60'
-                    }`}
-                  >
-                    <span>{cat.nome}</span>
-                    {totalNaCat > 0 && (
-                      <span className="text-xs text-zinc-600 tabular-nums">{totalNaCat}</span>
-                    )}
-                  </button>
-                )
-              })}
-            </div>
-          </div>
-
-          {/* Período */}
-          <div>
-            <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-2">Período</p>
-            <div className="space-y-1">
-              {([
-                { value: 'geral',  label: 'Ranking geral' },
-                { value: 'mes',    label: 'Últimos 30 dias' },
-                { value: 'semana', label: 'Últimos 7 dias' },
-              ] as { value: Periodo; label: string }[]).map(p => (
-                <button
-                  key={p.value}
-                  onClick={() => setPeriodo(p.value)}
-                  className={`w-full flex items-center px-3 py-2.5 rounded-lg text-left text-sm transition-all ${
-                    periodo === p.value
-                      ? 'bg-zinc-800 text-white font-medium'
-                      : 'text-zinc-500 hover:text-zinc-300 hover:bg-zinc-900/60'
-                  }`}
-                >
-                  {p.label}
-                </button>
-              ))}
-            </div>
-            {periodo !== 'geral' && (
-              <p className="text-xs text-zinc-600 mt-2 px-1 leading-relaxed">
-                Votar só altera o ranking geral. Os rankings de semana e mês refletem votos recentes.
-              </p>
-            )}
-          </div>
-        </aside>
-
-        {/* Conteúdo principal */}
-        <div className="flex-1 min-w-0">
-          {/* Subtítulo da categoria + toggle modelo/ferramenta */}
-          <div className="mb-5 flex items-start justify-between flex-wrap gap-3">
-            <div>
-              {categoriaInfo && (
-                <>
-                  <h2 className="text-lg font-bold text-white">{categoriaInfo.nome}</h2>
-                  {categoriaInfo.descricao && (
-                    <p className="text-sm text-zinc-500 mt-0.5">{categoriaInfo.descricao}</p>
-                  )}
-                </>
-              )}
-            </div>
-            <div className="flex gap-1 bg-zinc-900 p-1 rounded-lg shrink-0">
-              <button
-                onClick={() => setGrupoAtivo('modelo')}
-                className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${
-                  grupoAtivo === 'modelo' ? 'bg-white text-zinc-950' : 'text-zinc-400 hover:text-white'
-                }`}
-              >
-                Modelos de IA
-              </button>
-              <button
-                onClick={() => setGrupoAtivo('ferramenta')}
-                className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${
-                  grupoAtivo === 'ferramenta' ? 'bg-white text-zinc-950' : 'text-zinc-400 hover:text-white'
-                }`}
-              >
-                Ferramentas
-              </button>
-            </div>
-          </div>
-
-          {/* Badge de período */}
-          {periodo !== 'geral' && (
-            <div className="mb-4 flex items-center gap-2">
-              <span className="text-xs px-2.5 py-1 rounded-full border border-zinc-700 text-zinc-400 bg-zinc-900">
-                {periodo === 'semana' ? 'Últimos 7 dias' : 'Últimos 30 dias'}
-              </span>
-              <span className="text-xs text-zinc-600">— votos recebidos nesse período</span>
-            </div>
-          )}
-
-          {!userId && (
-            <div className="mb-4 px-4 py-3 rounded-lg border border-zinc-800 bg-zinc-900/30 flex items-center justify-between gap-3">
-              <p className="text-xs text-zinc-500">
-                Vote nos melhores {grupoAtivo === 'modelo' ? 'modelos de IA' : 'ferramentas'} para o seu perfil
-              </p>
-              <Link href="/login" className="text-xs text-green-400 hover:underline flex-shrink-0">
-                Entrar para votar
-              </Link>
-            </div>
-          )}
-
-          {userId && periodo !== 'geral' && (
-            <div className="mb-4 px-4 py-3 rounded-lg border border-zinc-800/50 bg-zinc-900/20 flex items-center gap-2">
-              <svg className="w-3.5 h-3.5 text-zinc-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-              <p className="text-xs text-zinc-600">Para votar, volte ao ranking geral</p>
-            </div>
-          )}
-
-          {/* Lista rankeada */}
-          <div className="space-y-3">
-            {rankingAtual.map((f, i) => {
-              const jaVotou = meusVotos.some(v => v.ferramenta_id === f.id && v.categoria_uso_id === categoriaAtiva)
-              const maxVotos = rankingAtual[0]?.votos_cat ?? 0
-              const pct = maxVotos > 0 ? (f.votos_cat / maxVotos) * 100 : 0
-              const temVotos = f.votos_cat > 0
-
-              return (
-                <div
-                  key={f.id}
-                  className={`p-4 rounded-xl border transition-all ${
-                    i === 0 && temVotos
-                      ? 'border-yellow-500/20 bg-yellow-500/5'
-                      : 'border-zinc-800 bg-zinc-900/30 hover:border-zinc-700'
-                  }`}
-                >
-                  <div className="flex items-start gap-4">
-                    {/* Posição */}
-                    <div className="w-8 text-center flex-shrink-0 pt-1">
-                      {temVotos ? (
-                        <span className={`text-lg font-black ${
-                          i === 0 ? 'text-yellow-400' :
-                          i === 1 ? 'text-zinc-300' :
-                          i === 2 ? 'text-amber-600' :
-                          'text-zinc-700'
-                        }`}>
-                          {i + 1}
-                        </span>
-                      ) : (
-                        <span className="text-zinc-800 text-lg font-black">—</span>
-                      )}
-                    </div>
-
-                    {/* Ícone */}
-                    <FerramIcon nome={f.nome} tipo={f.tipo} />
-
-                    {/* Info */}
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap mb-1">
-                        <p className="text-sm font-semibold text-white">{f.nome}</p>
-                        <span className={`px-1.5 py-0.5 rounded-full text-[10px] border ${TIPO_COLOR[f.tipo]}`}>
-                          {TIPO_LABELS[f.tipo]}
-                        </span>
-                        {f.destaque && (
-                          <span className="text-xs text-zinc-500 font-medium">Destaque</span>
-                        )}
-                      </div>
-
-                      {f.descricao && (
-                        <p className="text-xs text-zinc-500 line-clamp-2 mb-2">{f.descricao}</p>
-                      )}
-
-                      {temVotos && (
-                        <div className="flex items-center gap-2 mb-2">
-                          <div className="flex-1 h-1 rounded-full bg-zinc-800 overflow-hidden">
-                            <div
-                              className="h-full rounded-full bg-green-500/70 transition-all duration-500"
-                              style={{ width: `${pct}%` }}
-                            />
-                          </div>
-                          <span className="text-xs text-zinc-600 flex-shrink-0 tabular-nums w-20 text-right">
-                            {f.votos_cat} {f.votos_cat === 1 ? 'voto' : 'votos'}
-                          </span>
-                        </div>
-                      )}
-
-                      {f.url && (
-                        <a
-                          href={f.url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-xs text-zinc-600 hover:text-zinc-400 transition-colors"
-                          onClick={e => e.stopPropagation()}
-                        >
-                          {f.url.replace(/^https?:\/\//, '').replace(/\/$/, '')} ↗
-                        </a>
-                      )}
-                    </div>
-
-                    {/* Botão de voto */}
-                    <button
-                      onClick={() => handleVoto(f.id)}
-                      disabled={!userId || periodo !== 'geral'}
-                      title={
-                        !userId ? 'Entre para votar'
-                        : periodo !== 'geral' ? 'Votar só no ranking geral'
-                        : jaVotou ? 'Remover voto'
-                        : 'Votar'
-                      }
-                      className={`flex-shrink-0 flex flex-col items-center gap-0.5 px-3 py-2 rounded-lg border transition-all min-w-[48px] ${
-                        jaVotou && periodo === 'geral'
-                          ? 'border-green-500/40 bg-green-500/10 text-green-400'
-                          : userId && periodo === 'geral'
-                            ? 'border-zinc-700 text-zinc-500 hover:border-zinc-500 hover:text-white'
-                            : 'border-zinc-800 text-zinc-700 cursor-not-allowed'
-                      }`}
-                    >
-                      <svg className="w-3.5 h-3.5" fill={jaVotou && periodo === 'geral' ? 'currentColor' : 'none'} stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
-                      </svg>
-                      <span className="text-xs font-semibold tabular-nums">{f.votos_cat}</span>
-                    </button>
-                  </div>
-                </div>
-              )
-            })}
-
-            {rankingAtual.length === 0 && (
-              <div className="text-center py-16 border border-dashed border-zinc-800 rounded-xl">
-                <p className="text-zinc-500 text-sm">
-                  Nenhum{grupoAtivo === 'modelo' ? ' modelo de IA' : 'a ferramenta'} cadastrado ainda.
-                </p>
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-    </div>
-  )
-}
-
-function FerramIcon({ nome, tipo }: { nome: string; tipo: string }) {
-  const bgMap: Record<string, string> = {
-    llm:        'bg-violet-500/15 border-violet-500/20 text-violet-300',
-    app:        'bg-blue-500/15 border-blue-500/20 text-blue-300',
-    extensao:   'bg-amber-500/15 border-amber-500/20 text-amber-300',
-    plataforma: 'bg-green-500/15 border-green-500/20 text-green-300',
-    outro:      'bg-zinc-800 border-zinc-700 text-zinc-400',
-  }
-  return (
-    <div className={`w-9 h-9 rounded-xl border flex items-center justify-center flex-shrink-0 font-bold text-sm ${bgMap[tipo] ?? bgMap.outro}`}>
-      {nome[0]?.toUpperCase()}
     </div>
   )
 }
@@ -519,31 +375,21 @@ function ContatoSugestao() {
         <h2 className="text-xl font-bold text-white mb-2">Sugerir ferramenta</h2>
         <p className="text-sm text-zinc-500 leading-relaxed">
           O ranking é curado pela equipe Midori para garantir qualidade e relevância para o mercado jurídico brasileiro.
-          Apenas ferramentas avaliadas pela equipe são incluídas.
         </p>
       </div>
-
       <div className="p-5 rounded-xl border border-zinc-800 bg-zinc-900/30 space-y-3">
         <p className="text-sm font-medium text-white">Você representa uma empresa com uma ferramenta de IA para o mundo jurídico?</p>
         <p className="text-sm text-zinc-500 leading-relaxed">
-          Entre em contato pelo e-mail abaixo para solicitar a inclusão no ranking. Nossa equipe avalia a ferramenta e, se aprovada, ela é adicionada com uma descrição imparcial para que os usuários possam votar.
+          Entre em contato pelo e-mail abaixo. Nossa equipe avalia a ferramenta e, se aprovada, ela é adicionada com uma descrição imparcial para que os usuários possam votar.
         </p>
-        <a
-          href="mailto:contato@midori.law"
-          className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg border border-zinc-700 text-zinc-300 hover:text-white hover:border-zinc-500 transition-colors text-sm font-medium"
-        >
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-          </svg>
+        <a href="mailto:contato@midori.law" className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg border border-zinc-700 text-zinc-300 hover:text-white hover:border-zinc-500 transition-colors text-sm font-medium">
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
           contato@midori.law
         </a>
       </div>
-
-      <div className="p-4 rounded-xl border border-zinc-800/50 bg-zinc-900/20">
-        <p className="text-xs text-zinc-600 leading-relaxed">
-          Somos uma plataforma independente. A inclusão no ranking não é paga e não representa endosso comercial. A posição de cada ferramenta é determinada exclusivamente pelos votos da comunidade de profissionais do direito.
-        </p>
-      </div>
+      <p className="text-xs text-zinc-600 leading-relaxed">
+        Plataforma independente. Inclusão não é paga. Posição determinada exclusivamente pelos votos da comunidade.
+      </p>
     </div>
   )
 }

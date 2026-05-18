@@ -1012,33 +1012,37 @@ const TIPO_LABELS: Record<string, string> = {
   llm: 'Modelo de IA', app: 'Aplicativo', extensao: 'Extensão', plataforma: 'Plataforma', outro: 'Outro',
 }
 
-const FORM_VAZIO = { nome: '', descricao: '', url: '', tipo: 'llm', grupo: 'modelo', status: 'ativo', destaque: false, observacoes: '' }
+const FORM_VAZIO = { nome: '', descricao: '', url: '', tipo: 'llm', grupo: 'modelo', status: 'ativo', destaque: false, observacoes: '', perfil_ids: [] as string[], uso_ids: [] as string[] }
 
 function FeramentasAdminTab() {
   const supabase = createClient()
   const [ferramentas, setFerramentas] = useState<any[]>([])
+  const [categoriasUso, setCategoriasUso] = useState<{ id: string; nome: string; tipo_categoria: string }[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [filterStatus, setFilterStatus] = useState('')
   const [filterGrupo, setFilterGrupo] = useState('')
   const [editando, setEditando] = useState<any | null>(null)
   const [criando, setCriando] = useState(false)
-  const [form, setForm] = useState<typeof FORM_VAZIO>(FORM_VAZIO)
+  const [form, setForm] = useState(FORM_VAZIO)
   const [saving, setSaving] = useState(false)
   const [erro, setErro] = useState('')
 
   const load = useCallback(async () => {
     setLoading(true)
-    const { data } = await (supabase as any)
-      .from('ferramentas').select('*').order('grupo').order('nome')
-    setFerramentas(data ?? [])
+    const [{ data: ferrs }, { data: cats }] = await Promise.all([
+      (supabase as any).from('ferramentas').select('*').order('grupo').order('nome'),
+      (supabase as any).from('categorias_uso').select('id, nome, tipo_categoria').eq('ativo', true).order('tipo_categoria').order('ordem'),
+    ])
+    setFerramentas(ferrs ?? [])
+    setCategoriasUso(cats ?? [])
     setLoading(false)
   }, [])
 
   useEffect(() => { load() }, [load])
 
   const abrirEditar = (f: any) => {
-    setForm({ nome: f.nome, descricao: f.descricao ?? '', url: f.url ?? '', tipo: f.tipo, grupo: f.grupo, status: f.status, destaque: f.destaque ?? false, observacoes: f.observacoes ?? '' })
+    setForm({ nome: f.nome, descricao: f.descricao ?? '', url: f.url ?? '', tipo: f.tipo, grupo: f.grupo, status: f.status, destaque: f.destaque ?? false, observacoes: f.observacoes ?? '', perfil_ids: f.perfil_ids ?? [], uso_ids: f.uso_ids ?? [] })
     setEditando(f)
     setCriando(false)
     setErro('')
@@ -1057,7 +1061,7 @@ function FeramentasAdminTab() {
     if (!form.nome.trim()) { setErro('Nome é obrigatório.'); return }
     setSaving(true)
     setErro('')
-    const payload = { nome: form.nome.trim(), descricao: form.descricao || null, url: form.url || null, tipo: form.tipo, grupo: form.grupo, status: form.status, destaque: form.destaque, observacoes: form.observacoes || null }
+    const payload = { nome: form.nome.trim(), descricao: form.descricao || null, url: form.url || null, tipo: form.tipo, grupo: form.grupo, status: form.status, destaque: form.destaque, observacoes: form.observacoes || null, perfil_ids: form.perfil_ids, uso_ids: form.uso_ids }
     if (criando) {
       const { error } = await (supabase as any).from('ferramentas').insert(payload)
       if (error) { setErro(error.message); setSaving(false); return }
@@ -1152,6 +1156,44 @@ function FeramentasAdminTab() {
               rows={3}
               className="w-full px-3 py-2 rounded-lg bg-zinc-950 border border-zinc-800 text-white text-sm focus:outline-none focus:border-zinc-600 resize-none" />
           </div>
+
+          {/* Perfil profissional — multi-select */}
+          {categoriasUso.filter(c => c.tipo_categoria === 'perfil').length > 0 && (
+            <div>
+              <label className="block text-xs text-zinc-500 mb-2">Perfil profissional (para quem se destina)</label>
+              <div className="flex flex-wrap gap-2">
+                {categoriasUso.filter(c => c.tipo_categoria === 'perfil').map(cat => {
+                  const sel = form.perfil_ids.includes(cat.id)
+                  return (
+                    <button key={cat.id} type="button"
+                      onClick={() => setForm(p => ({ ...p, perfil_ids: sel ? p.perfil_ids.filter(x => x !== cat.id) : [...p.perfil_ids, cat.id] }))}
+                      className={`px-3 py-1.5 rounded-lg text-xs border transition-colors ${sel ? 'bg-green-500/15 border-green-500/30 text-green-300' : 'border-zinc-700 text-zinc-500 hover:text-zinc-300 hover:border-zinc-600'}`}>
+                      {sel && <span className="mr-1">✓</span>}{cat.nome}
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* Tipo de uso — multi-select */}
+          {categoriasUso.filter(c => c.tipo_categoria === 'uso').length > 0 && (
+            <div>
+              <label className="block text-xs text-zinc-500 mb-2">Tipo de uso</label>
+              <div className="flex flex-wrap gap-2">
+                {categoriasUso.filter(c => c.tipo_categoria === 'uso').map(cat => {
+                  const sel = form.uso_ids.includes(cat.id)
+                  return (
+                    <button key={cat.id} type="button"
+                      onClick={() => setForm(p => ({ ...p, uso_ids: sel ? p.uso_ids.filter(x => x !== cat.id) : [...p.uso_ids, cat.id] }))}
+                      className={`px-3 py-1.5 rounded-lg text-xs border transition-colors ${sel ? 'bg-blue-500/15 border-blue-500/30 text-blue-300' : 'border-zinc-700 text-zinc-500 hover:text-zinc-300 hover:border-zinc-600'}`}>
+                      {sel && <span className="mr-1">✓</span>}{cat.nome}
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+          )}
 
           {/* Status + Destaque */}
           <div className="grid grid-cols-2 gap-3">

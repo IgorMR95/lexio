@@ -17,7 +17,7 @@ export default async function RankingPage() {
   ] = await Promise.all([
     (supabase as any)
       .from('ferramentas')
-      .select('id, nome, descricao, url, tipo, grupo, destaque')
+      .select('id, nome, descricao, url, tipo, grupo, destaque, perfil_ids, uso_ids')
       .eq('status', 'ativo')
       .order('nome'),
     (supabase as any)

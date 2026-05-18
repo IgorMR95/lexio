@@ -198,19 +198,13 @@ export function RankingClient({
       </div>
 
       {/* Abas */}
-      <div className="flex gap-1 mb-8 border-b border-zinc-800">
-        {([
-          { v: 'ranking',  l: 'Ranking',  icon: 'M3 4h13M3 8h9m-9 4h6m4 0l4-4m0 0l4 4m-4-4v12' },
-          { v: 'graficos', l: 'Gráficos', icon: 'M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z' },
-        ] as { v: Aba; l: string; icon: string }[]).map(a => (
-          <button key={a.v} onClick={() => setAba(a.v)}
-            className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium border-b-2 -mb-px transition-colors ${
-              aba === a.v ? 'border-green-500 text-white' : 'border-transparent text-zinc-500 hover:text-zinc-300'
+      <div className="flex gap-1 bg-zinc-900 p-1 rounded-lg w-fit mb-8">
+        {(['ranking', 'graficos'] as Aba[]).map(a => (
+          <button key={a} onClick={() => setAba(a)}
+            className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+              aba === a ? 'bg-white text-zinc-950' : 'text-zinc-400 hover:text-white'
             }`}>
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={a.icon} />
-            </svg>
-            {a.l}
+            {a === 'ranking' ? 'Ranking' : 'Gráficos'}
           </button>
         ))}
       </div>
@@ -218,144 +212,140 @@ export function RankingClient({
       <div className="flex gap-8 items-start">
 
         {/* ── Sidebar ── */}
-        <aside className="w-56 shrink-0 space-y-6 sticky top-6">
+        <aside className="w-56 shrink-0 sticky top-6">
+          <div className="space-y-5">
 
-          {/* Tipo */}
-          <div>
-            <p className="text-[11px] font-semibold text-zinc-500 uppercase tracking-widest mb-2">Tipo</p>
-            <div className="space-y-1">
-              {([
-                { v: 'modelo',     l: 'Modelos de IA',  sub: 'ChatGPT, Claude, Gemini…' },
-                { v: 'ferramenta', l: 'Ferramentas',     sub: 'Apps e plataformas' },
-              ] as { v: 'modelo' | 'ferramenta'; l: string; sub: string }[]).map(g => (
-                <button key={g.v} onClick={() => setGrupoAtivo(g.v)}
-                  className={`w-full text-left px-3 py-2.5 rounded-xl border text-sm transition-all ${
-                    grupoAtivo === g.v
-                      ? g.v === 'modelo'
-                        ? 'bg-violet-500/10 border-violet-500/30 text-violet-300'
-                        : 'bg-blue-500/10 border-blue-500/30 text-blue-300'
-                      : 'border-zinc-800 text-zinc-500 hover:text-zinc-300 hover:border-zinc-700 bg-transparent'
-                  }`}>
-                  <span className="font-medium block">{g.l}</span>
-                  <span className="text-[11px] opacity-60 font-normal">{g.sub}</span>
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Perfil profissional — multi-select */}
-          <div>
-            <div className="flex items-center justify-between mb-2">
-              <p className="text-[11px] font-semibold text-zinc-500 uppercase tracking-widest">Perfil</p>
-              {perfisAtivos.length > 0 && (
-                <button onClick={() => setPerfisAtivos([])} className="text-[10px] text-zinc-600 hover:text-zinc-400 transition-colors">limpar</button>
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-semibold text-zinc-400 uppercase tracking-wider">Filtros</span>
+              {temFiltros && (
+                <button onClick={limparFiltros} className="text-xs text-zinc-500 hover:text-white transition-colors">Limpar</button>
               )}
             </div>
-            <div className="space-y-0.5">
-              {perfis.map(cat => (
-                <button key={cat.id} onClick={() => togglePerfil(cat.id)}
-                  className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-colors flex items-center gap-2 ${
-                    perfisAtivos.includes(cat.id)
-                      ? 'bg-green-500/10 text-green-300 border border-green-500/20'
-                      : 'text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800/50 border border-transparent'
-                  }`}>
-                  <span className={`w-3.5 h-3.5 rounded border shrink-0 flex items-center justify-center transition-colors ${
-                    perfisAtivos.includes(cat.id) ? 'bg-green-500 border-green-500' : 'border-zinc-600'
-                  }`}>
-                    {perfisAtivos.includes(cat.id) && (
-                      <svg className="w-2.5 h-2.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                      </svg>
-                    )}
-                  </span>
-                  {cat.nome}
-                </button>
-              ))}
-            </div>
-          </div>
 
-          {/* Tipo de uso — multi-select */}
-          <div>
-            <div className="flex items-center justify-between mb-2">
-              <p className="text-[11px] font-semibold text-zinc-500 uppercase tracking-widest">Uso</p>
-              {usosAtivos.length > 0 && (
-                <button onClick={() => setUsosAtivos([])} className="text-[10px] text-zinc-600 hover:text-zinc-400 transition-colors">limpar</button>
-              )}
-            </div>
-            <div className="space-y-0.5">
-              {usos.map(cat => (
-                <button key={cat.id} onClick={() => toggleUso(cat.id)}
-                  className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-colors flex items-center gap-2 ${
-                    usosAtivos.includes(cat.id)
-                      ? 'bg-blue-500/10 text-blue-300 border border-blue-500/20'
-                      : 'text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800/50 border border-transparent'
-                  }`}>
-                  <span className={`w-3.5 h-3.5 rounded border shrink-0 flex items-center justify-center transition-colors ${
-                    usosAtivos.includes(cat.id) ? 'bg-blue-500 border-blue-500' : 'border-zinc-600'
-                  }`}>
-                    {usosAtivos.includes(cat.id) && (
-                      <svg className="w-2.5 h-2.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                      </svg>
-                    )}
-                  </span>
-                  {cat.nome}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Período — só na aba ranking */}
-          {aba === 'ranking' && (
+            {/* Tipo */}
             <div>
-              <p className="text-[11px] font-semibold text-zinc-500 uppercase tracking-widest mb-2">Período</p>
-              <div className="space-y-0.5">
-                {([
-                  { v: 'geral',  l: 'Geral (todos os tempos)' },
-                  { v: 'mes',    l: 'Últimos 30 dias' },
-                  { v: 'semana', l: 'Últimos 7 dias' },
-                ] as { v: Periodo; l: string }[]).map(p => (
-                  <button key={p.v} onClick={() => setPeriodo(p.v)}
-                    className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-colors ${
-                      periodo === p.v
-                        ? 'bg-zinc-800 text-white border border-zinc-700'
-                        : 'text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800/50 border border-transparent'
-                    }`}>
-                    {p.l}
-                  </button>
-                ))}
-              </div>
+              <label className="text-xs text-zinc-500 mb-1.5 block">Tipo</label>
+              <select
+                value={grupoAtivo}
+                onChange={e => setGrupoAtivo(e.target.value as 'modelo' | 'ferramenta')}
+                className="w-full px-2.5 py-2 rounded-lg bg-zinc-900 border border-zinc-800 text-zinc-300 text-xs focus:outline-none focus:border-zinc-600"
+              >
+                <option value="modelo">Modelos de IA</option>
+                <option value="ferramenta">Ferramentas</option>
+              </select>
             </div>
-          )}
 
-          {/* Entenda a diferença */}
-          <div className="rounded-xl border border-zinc-800 overflow-hidden">
-            <button onClick={() => setMostrarExplicacao(o => !o)}
-              className="w-full flex items-center justify-between px-3 py-2.5 text-left hover:bg-zinc-900/50 transition-colors">
-              <span className="text-xs text-zinc-400 font-medium leading-snug">Entenda a diferença</span>
-              <svg className={`w-3.5 h-3.5 text-zinc-600 transition-transform shrink-0 ml-2 ${mostrarExplicacao ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-              </svg>
-            </button>
-            {mostrarExplicacao && (
-              <div className="px-3 pb-3 pt-1 border-t border-zinc-800/60 space-y-2.5">
-                <div>
-                  <p className="text-xs font-semibold text-violet-300 mb-0.5">Modelos de IA</p>
-                  <p className="text-[11px] text-zinc-500 leading-relaxed">O &ldquo;cérebro&rdquo; — você conversa via chat. Ex: ChatGPT, Claude, Gemini.</p>
+            {/* Perfil profissional — multi-select */}
+            {perfis.length > 0 && (
+              <div>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="text-xs text-zinc-500">Perfil profissional</label>
+                  {perfisAtivos.length > 0 && (
+                    <button onClick={() => setPerfisAtivos([])} className="text-xs text-zinc-500 hover:text-white transition-colors">Limpar</button>
+                  )}
                 </div>
-                <div>
-                  <p className="text-xs font-semibold text-blue-300 mb-0.5">Ferramentas</p>
-                  <p className="text-[11px] text-zinc-500 leading-relaxed">Apps construídos sobre um modelo com funções específicas. Ex: Netlex, Turivius.</p>
+                <div className="space-y-0.5">
+                  {perfis.map(cat => (
+                    <button key={cat.id} onClick={() => togglePerfil(cat.id)}
+                      className={`w-full text-left px-2.5 py-1.5 rounded-lg text-xs transition-colors flex items-center gap-2 ${
+                        perfisAtivos.includes(cat.id)
+                          ? 'bg-zinc-800 text-white'
+                          : 'text-zinc-500 hover:text-zinc-300 hover:bg-zinc-900'
+                      }`}>
+                      <span className={`w-3 h-3 rounded border shrink-0 flex items-center justify-center transition-colors ${
+                        perfisAtivos.includes(cat.id) ? 'bg-green-500 border-green-500' : 'border-zinc-600'
+                      }`}>
+                        {perfisAtivos.includes(cat.id) && (
+                          <svg className="w-2 h-2 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                          </svg>
+                        )}
+                      </span>
+                      {cat.nome}
+                    </button>
+                  ))}
                 </div>
-                <p className="text-[11px] text-zinc-600 italic">O modelo é o motor. A ferramenta é o carro completo.</p>
               </div>
             )}
-          </div>
 
-          <button onClick={() => setMostrarSugerir(true)}
-            className="w-full text-xs px-3 py-2 rounded-lg border border-zinc-800 text-zinc-600 hover:text-zinc-400 hover:border-zinc-700 transition-colors text-left">
-            + Sugerir ferramenta
-          </button>
+            {/* Tipo de uso — multi-select */}
+            {usos.length > 0 && (
+              <div>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="text-xs text-zinc-500">Tipo de uso</label>
+                  {usosAtivos.length > 0 && (
+                    <button onClick={() => setUsosAtivos([])} className="text-xs text-zinc-500 hover:text-white transition-colors">Limpar</button>
+                  )}
+                </div>
+                <div className="space-y-0.5">
+                  {usos.map(cat => (
+                    <button key={cat.id} onClick={() => toggleUso(cat.id)}
+                      className={`w-full text-left px-2.5 py-1.5 rounded-lg text-xs transition-colors flex items-center gap-2 ${
+                        usosAtivos.includes(cat.id)
+                          ? 'bg-zinc-800 text-white'
+                          : 'text-zinc-500 hover:text-zinc-300 hover:bg-zinc-900'
+                      }`}>
+                      <span className={`w-3 h-3 rounded border shrink-0 flex items-center justify-center transition-colors ${
+                        usosAtivos.includes(cat.id) ? 'bg-green-500 border-green-500' : 'border-zinc-600'
+                      }`}>
+                        {usosAtivos.includes(cat.id) && (
+                          <svg className="w-2 h-2 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                          </svg>
+                        )}
+                      </span>
+                      {cat.nome}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Período — só na aba ranking */}
+            {aba === 'ranking' && (
+              <div>
+                <label className="text-xs text-zinc-500 mb-1.5 block">Período</label>
+                <select
+                  value={periodo}
+                  onChange={e => setPeriodo(e.target.value as Periodo)}
+                  className="w-full px-2.5 py-2 rounded-lg bg-zinc-900 border border-zinc-800 text-zinc-300 text-xs focus:outline-none focus:border-zinc-600"
+                >
+                  <option value="geral">Geral (todos os tempos)</option>
+                  <option value="mes">Últimos 30 dias</option>
+                  <option value="semana">Últimos 7 dias</option>
+                </select>
+              </div>
+            )}
+
+            {/* Entenda a diferença */}
+            <div className="rounded-lg border border-zinc-800 overflow-hidden">
+              <button onClick={() => setMostrarExplicacao(o => !o)}
+                className="w-full flex items-center justify-between px-3 py-2 text-left hover:bg-zinc-900/60 transition-colors">
+                <span className="text-xs text-zinc-400 font-medium">Entenda a diferença</span>
+                <svg className={`w-3.5 h-3.5 text-zinc-600 transition-transform shrink-0 ml-2 ${mostrarExplicacao ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              </button>
+              {mostrarExplicacao && (
+                <div className="px-3 pb-3 pt-2 border-t border-zinc-800 space-y-2">
+                  <div>
+                    <p className="text-xs font-medium text-zinc-300 mb-0.5">Modelos de IA</p>
+                    <p className="text-xs text-zinc-500 leading-relaxed">O &ldquo;cérebro&rdquo; — você conversa via chat. Ex: ChatGPT, Claude, Gemini.</p>
+                  </div>
+                  <div>
+                    <p className="text-xs font-medium text-zinc-300 mb-0.5">Ferramentas</p>
+                    <p className="text-xs text-zinc-500 leading-relaxed">Apps construídos sobre um modelo com funções específicas. Ex: Netlex, Turivius.</p>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <button onClick={() => setMostrarSugerir(true)}
+              className="w-full text-xs px-3 py-2 rounded-lg border border-zinc-800 text-zinc-500 hover:text-white hover:border-zinc-700 transition-colors text-left">
+              + Sugerir ferramenta
+            </button>
+
+          </div>
         </aside>
 
         {/* ── Conteúdo principal ── */}

@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { ManualTab } from './tabs/ManualTab'
 import { ImportTab } from './tabs/ImportTab'
+import { SkillManualTab } from './tabs/SkillManualTab'
 import type { CategoriaPrincipal, Subcategoria, Subnivel, AreaDireito } from '@/lib/supabase/types'
 
 interface Props {
@@ -13,50 +14,102 @@ interface Props {
   userId: string
 }
 
-const tabs = [
-  { id: 'manual', label: 'Manual' },
-  { id: 'excel', label: 'Importar Excel' },
-  { id: 'docs', label: 'Documentação' },
-]
+type ContentType = 'prompt' | 'skill'
+type PromptTab = 'manual' | 'excel' | 'docs'
 
 export function AlimentacaoClient({ categorias, subcategorias, subniveis, areas, userId }: Props) {
-  const [activeTab, setActiveTab] = useState('manual')
+  const [contentType, setContentType] = useState<ContentType>('prompt')
+  const [promptTab, setPromptTab] = useState<PromptTab>('manual')
 
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
       <div className="mb-8">
-        <h1 className="text-2xl font-bold text-white">Alimentação</h1>
-        <p className="text-zinc-500 text-sm mt-1">Cadastre novos prompts na base</p>
+        <h1 className="text-2xl font-bold text-white">Contribuir com a base</h1>
+        <p className="text-zinc-500 text-sm mt-1">Compartilhe seu conhecimento com a comunidade jurídica</p>
       </div>
 
-      {/* Tabs */}
-      <div className="flex gap-1 bg-zinc-900 p-1 rounded-lg mb-8 w-fit">
-        {tabs.map(tab => (
-          <button
-            key={tab.id}
-            onClick={() => setActiveTab(tab.id)}
-            className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-              activeTab === tab.id
-                ? 'bg-white text-zinc-950'
-                : 'text-zinc-400 hover:text-white'
-            }`}
-          >
-            {tab.label}
-          </button>
-        ))}
+      {/* Seleção do tipo de conteúdo */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8">
+        <button
+          onClick={() => setContentType('prompt')}
+          className={`p-5 rounded-xl border text-left transition-all ${
+            contentType === 'prompt'
+              ? 'border-green-500/50 bg-green-500/10'
+              : 'border-zinc-800 bg-zinc-900/30 hover:border-zinc-700'
+          }`}
+        >
+          <div className="flex items-start gap-3">
+            <div className={`w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 ${contentType === 'prompt' ? 'bg-green-500/20 border border-green-500/30' : 'bg-zinc-800 border border-zinc-700'}`}>
+              <svg className={`w-5 h-5 ${contentType === 'prompt' ? 'text-green-400' : 'text-zinc-400'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+            </div>
+            <div>
+              <p className={`font-semibold text-sm ${contentType === 'prompt' ? 'text-green-300' : 'text-white'}`}>Prompt</p>
+              <p className="text-xs text-zinc-500 mt-0.5 leading-relaxed">
+                Um texto de instrução que você envia para a IA antes de fazer sua pergunta. Ex: &quot;Analise este contrato como advogado especialista em...&quot;
+              </p>
+            </div>
+          </div>
+        </button>
+
+        <button
+          onClick={() => setContentType('skill')}
+          className={`p-5 rounded-xl border text-left transition-all ${
+            contentType === 'skill'
+              ? 'border-violet-500/50 bg-violet-500/10'
+              : 'border-zinc-800 bg-zinc-900/30 hover:border-zinc-700'
+          }`}
+        >
+          <div className="flex items-start gap-3">
+            <div className={`w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 ${contentType === 'skill' ? 'bg-violet-500/20 border border-violet-500/30' : 'bg-zinc-800 border border-zinc-700'}`}>
+              <svg className={`w-5 h-5 ${contentType === 'skill' ? 'text-violet-400' : 'text-zinc-400'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+              </svg>
+            </div>
+            <div>
+              <p className={`font-semibold text-sm ${contentType === 'skill' ? 'text-violet-300' : 'text-white'}`}>Skill MD <span className="text-xs font-normal opacity-70">(arquivo de configuração)</span></p>
+              <p className="text-xs text-zinc-500 mt-0.5 leading-relaxed">
+                Um arquivo de configuração permanente que &quot;ensina&quot; a IA sobre você, sua área e seu jeito de trabalhar — sem precisar repetir isso a cada conversa.
+              </p>
+            </div>
+          </div>
+        </button>
       </div>
 
-      {activeTab === 'manual' && (
-        <ManualTab
-          categorias={categorias}
-          subcategorias={subcategorias}
-          subniveis={subniveis}
-          areas={areas}
-          userId={userId}
-        />
+      {contentType === 'prompt' && (
+        <>
+          <div className="flex gap-1 bg-zinc-900 p-1 rounded-lg mb-8 w-fit">
+            {([
+              { id: 'manual', label: 'Manual' },
+              { id: 'excel', label: 'Importar Excel' },
+              { id: 'docs', label: 'Documentação' },
+            ] as { id: PromptTab; label: string }[]).map(tab => (
+              <button
+                key={tab.id}
+                onClick={() => setPromptTab(tab.id)}
+                className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                  promptTab === tab.id ? 'bg-white text-zinc-950' : 'text-zinc-400 hover:text-white'
+                }`}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
+          {promptTab === 'manual' && (
+            <ManualTab categorias={categorias} subcategorias={subcategorias} subniveis={subniveis} areas={areas} userId={userId} />
+          )}
+          {promptTab === 'excel' && (
+            <ImportTab areas={areas} categorias={categorias} subcategorias={subcategorias} userId={userId} />
+          )}
+          {promptTab === 'docs' && <DocsTab />}
+        </>
       )}
-      {activeTab === 'excel' && <ImportTab areas={areas} categorias={categorias} subcategorias={subcategorias} userId={userId} />}
-      {activeTab === 'docs' && <DocsTab />}
+
+      {contentType === 'skill' && (
+        <SkillManualTab areas={areas} userId={userId} />
+      )}
     </div>
   )
 }

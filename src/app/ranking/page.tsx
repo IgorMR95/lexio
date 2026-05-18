@@ -9,17 +9,17 @@ export default async function RankingPage() {
 
   const [
     { data: ferramentas },
-    { data: categorias },
+    { data: perfis },
     { data: votos },
   ] = await Promise.all([
     (supabase as any)
       .from('ferramentas')
-      .select('*')
+      .select('id, nome, descricao, url, tipo, grupo, destaque')
       .eq('status', 'ativo')
       .order('nome'),
     (supabase as any)
       .from('categorias_uso')
-      .select('*')
+      .select('id, nome, slug, descricao, ordem')
       .eq('ativo', true)
       .order('ordem'),
     (supabase as any)
@@ -27,7 +27,6 @@ export default async function RankingPage() {
       .select('ferramenta_id, categoria_uso_id, total_votos'),
   ])
 
-  // Votos do usuário atual
   let meusVotos: { ferramenta_id: string; categoria_uso_id: string }[] = []
   if (user) {
     const { data: mv } = await (supabase as any)
@@ -40,7 +39,7 @@ export default async function RankingPage() {
   return (
     <RankingClient
       ferramentas={ferramentas ?? []}
-      categorias={categorias ?? []}
+      perfis={perfis ?? []}
       votos={votos ?? []}
       meusVotos={meusVotos}
       userId={user?.id ?? null}

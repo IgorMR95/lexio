@@ -9,8 +9,10 @@ export default async function RankingPage() {
 
   const [
     { data: ferramentas },
-    { data: perfis },
-    { data: votos },
+    { data: categorias },
+    { data: votosGeral },
+    { data: votosSemana },
+    { data: votosMes },
   ] = await Promise.all([
     (supabase as any)
       .from('ferramentas')
@@ -19,11 +21,18 @@ export default async function RankingPage() {
       .order('nome'),
     (supabase as any)
       .from('categorias_uso')
-      .select('id, nome, slug, descricao, ordem')
+      .select('id, nome, slug, descricao, ordem, tipo_categoria')
       .eq('ativo', true)
+      .order('tipo_categoria')
       .order('ordem'),
     (supabase as any)
       .from('ferramenta_votos_contagem')
+      .select('ferramenta_id, categoria_uso_id, total_votos'),
+    (supabase as any)
+      .from('ferramenta_votos_semana')
+      .select('ferramenta_id, categoria_uso_id, total_votos'),
+    (supabase as any)
+      .from('ferramenta_votos_mes')
       .select('ferramenta_id, categoria_uso_id, total_votos'),
   ])
 
@@ -39,8 +48,10 @@ export default async function RankingPage() {
   return (
     <RankingClient
       ferramentas={ferramentas ?? []}
-      perfis={perfis ?? []}
-      votos={votos ?? []}
+      categorias={categorias ?? []}
+      votosGeral={votosGeral ?? []}
+      votosSemana={votosSemana ?? []}
+      votosMes={votosMes ?? []}
       meusVotos={meusVotos}
       userId={user?.id ?? null}
     />

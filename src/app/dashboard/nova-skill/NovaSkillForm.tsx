@@ -5,10 +5,10 @@ import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 
 const TIPOS = [
-  { value: 'skill',     label: 'Skill',      desc: 'Instrução genérica para Claude Code' },
-  { value: 'persona',   label: 'Persona',    desc: 'Persona ou perfil de especialista' },
-  { value: 'workflow',  label: 'Workflow',   desc: 'Fluxo de trabalho automatizado' },
-  { value: 'instrucao', label: 'Instrução',  desc: 'Instrução de sistema ou comportamento' },
+  { value: 'skill',     label: 'Configuração geral',      desc: 'Regras e instruções que valem para toda e qualquer situação' },
+  { value: 'persona',   label: 'Perfil profissional',     desc: 'Define o papel e a especialidade que a IA deve assumir' },
+  { value: 'workflow',  label: 'Passo a passo de tarefa', desc: 'Roteiro de etapas para uma tarefa específica (análise, peça, parecer)' },
+  { value: 'instrucao', label: 'Regra de comportamento',  desc: 'Limites e restrições — o que a IA nunca deve fazer' },
 ]
 
 const COMPATIBILIDADE = ['Claude Code', 'Cursor', 'Continue', 'Cline', 'Copilot', 'Outro']

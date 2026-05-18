@@ -4,10 +4,10 @@ import { useState, useMemo } from 'react'
 import Link from 'next/link'
 
 const TIPOS = [
-  { value: 'skill',     label: 'Skill',       color: 'bg-green-500/10 text-green-400 border-green-500/20' },
-  { value: 'persona',   label: 'Persona',     color: 'bg-violet-500/10 text-violet-400 border-violet-500/20' },
-  { value: 'workflow',  label: 'Workflow',    color: 'bg-blue-500/10 text-blue-400 border-blue-500/20' },
-  { value: 'instrucao', label: 'Instrução',   color: 'bg-amber-500/10 text-amber-400 border-amber-500/20' },
+  { value: 'skill',     label: 'Configuração geral',      color: 'bg-green-500/10 text-green-400 border-green-500/20' },
+  { value: 'persona',   label: 'Perfil profissional',     color: 'bg-violet-500/10 text-violet-400 border-violet-500/20' },
+  { value: 'workflow',  label: 'Passo a passo de tarefa', color: 'bg-blue-500/10 text-blue-400 border-blue-500/20' },
+  { value: 'instrucao', label: 'Regra de comportamento',  color: 'bg-amber-500/10 text-amber-400 border-amber-500/20' },
 ]
 
 function tipoConfig(tipo: string) {

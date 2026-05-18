@@ -1,7 +1,6 @@
 'use client'
 
-import { useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useState, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import type { AreaDireito } from '@/lib/supabase/types'
 
@@ -21,8 +20,25 @@ const TIPOS = [
       </svg>
     ),
     exemplo: 'Ex: "Sempre responda em linguagem jurídica formal. Use ABNT. Indique os artigos de lei aplicáveis."',
-    descricao: 'Instruções gerais de como a IA deve se comportar em toda e qualquer situação — formatação, linguagem, regras que valem sempre.',
+    descricao: 'Regras gerais de como a IA deve se comportar em qualquer situação — formatação, linguagem, referências que valem sempre.',
     color: 'green',
+    template: `# [Nome da sua configuração]
+
+## Contexto
+[Descreva em 1-2 frases quem você é e em que contexto essa configuração será usada]
+
+## Instruções gerais
+- [Regra 1 — ex: Use sempre linguagem jurídica formal]
+- [Regra 2 — ex: Cite os artigos de lei aplicáveis em cada resposta]
+- [Regra 3 — ex: Formate as respostas com títulos e subtítulos claros]
+- [Regra 4 — adicione quantas precisar]
+
+## Formatação padrão
+[Descreva como quer que as respostas sejam formatadas — ex: use negrito nos termos jurídicos, numere as etapas, etc.]
+
+## Restrições
+- Nunca [algo que a IA não deve fazer]
+- Sempre avise quando [situação de incerteza]`,
   },
   {
     value: 'persona',
@@ -35,6 +51,27 @@ const TIPOS = [
     exemplo: 'Ex: "Você é um advogado trabalhista com 15 anos de experiência em reclamações na Justiça do Trabalho de São Paulo..."',
     descricao: 'Define quem a IA deve "ser" — um especialista em determinada área, com o perfil e experiência que você precisa para aquele trabalho.',
     color: 'violet',
+    template: `# [Nome do perfil profissional]
+
+## Quem você é
+Você é um [cargo/função] especializado em [área de atuação], com [X] anos de experiência em [especificidade — ex: Justiça do Trabalho de São Paulo].
+
+## Sua expertise
+- [Especialidade 1 — ex: Reclamações trabalhistas individuais]
+- [Especialidade 2 — ex: Acordos e homologações]
+- [Especialidade 3 — adicione conforme necessário]
+
+## Como você trabalha
+- [Característica 1 — ex: Analisa os fatos antes de sugerir a tese jurídica]
+- [Característica 2 — ex: Sempre considera o custo-benefício para o cliente]
+- [Característica 3 — ex: Menciona prazos e riscos de forma proativa]
+
+## Tom e linguagem
+[Descreva o tom — ex: Técnico mas acessível. Direto ao ponto. Evita juridiquês desnecessário.]
+
+## O que você nunca faz
+- Nunca inventa jurisprudência ou números de processo
+- [Outras restrições específicas do perfil]`,
   },
   {
     value: 'workflow',
@@ -47,6 +84,31 @@ const TIPOS = [
     exemplo: 'Ex: "Ao analisar um contrato: 1) identifique as partes, 2) verifique cláusulas abusivas, 3) aponte os riscos, 4) sugira alterações..."',
     descricao: 'Um roteiro de etapas que a IA deve seguir automaticamente ao realizar uma tarefa específica — análise de contrato, elaboração de peça, parecer etc.',
     color: 'blue',
+    template: `# [Nome da tarefa — ex: Análise de Contrato Empresarial]
+
+## Quando usar
+[Descreva exatamente quando este passo a passo deve ser ativado — ex: Sempre que eu pedir para analisar um contrato]
+
+## Etapas obrigatórias
+
+### 1. [Nome da primeira etapa — ex: Identificação das partes]
+[Descreva o que deve ser feito nesta etapa]
+
+### 2. [Nome da segunda etapa — ex: Verificação de cláusulas críticas]
+[Descreva o que deve ser feito]
+- [Sub-item se necessário]
+- [Sub-item se necessário]
+
+### 3. [Nome da terceira etapa — ex: Análise de riscos]
+[Descreva o que deve ser feito]
+
+### 4. [Adicione quantas etapas precisar]
+
+## Formato da resposta final
+[Descreva como quer que o resultado seja apresentado — ex: Relatório com seções numeradas, tabela de riscos, conclusão com recomendação]
+
+## Referências legais obrigatórias
+[Liste as leis, códigos ou normas que devem ser verificados — ex: Código Civil arts. 421-480, CDC se houver relação de consumo]`,
   },
   {
     value: 'instrucao',
@@ -59,16 +121,37 @@ const TIPOS = [
     exemplo: 'Ex: "Nunca invente jurisprudência. Se não souber a decisão exata, diga que precisa ser verificado. Sempre cite a fonte."',
     descricao: 'Limites e restrições específicas — o que a IA nunca deve fazer, como deve se comportar em situações delicadas ou quando não tiver certeza.',
     color: 'amber',
+    template: `# [Nome da regra — ex: Integridade jurídica]
+
+## Propósito
+[Explique em 1 frase por que essa regra existe — ex: Evitar que a IA apresente informações jurídicas incorretas como se fossem fatos]
+
+## O que NUNCA fazer
+- Nunca [proibição 1 — ex: inventar números de acórdão ou decisões judiciais]
+- Nunca [proibição 2 — ex: afirmar que uma lei existe sem ter certeza]
+- Nunca [proibição 3 — adicione conforme necessário]
+
+## O que SEMPRE fazer
+- Sempre [obrigação 1 — ex: indicar a fonte ao citar jurisprudência]
+- Sempre [obrigação 2 — ex: avisar quando a resposta precisa ser verificada com pesquisa atualizada]
+- Sempre [obrigação 3 — adicione conforme necessário]
+
+## Situações específicas
+### Quando não souber a resposta
+[Instrução de como se comportar — ex: Dizer explicitamente "não tenho certeza sobre isso" e sugerir onde verificar]
+
+### Quando a legislação puder ter mudado
+[Instrução — ex: Alertar que a informação se baseia no conhecimento até [data] e recomendar verificação no site do Planalto]`,
   },
 ]
 
 const COMPATIBILIDADE = [
   { value: 'Claude Code', label: 'Claude Code', desc: 'Assistente de programação da Anthropic' },
-  { value: 'Cursor', label: 'Cursor', desc: 'Editor com IA integrada' },
-  { value: 'Continue', label: 'Continue', desc: 'Extensão para VS Code' },
+  { value: 'Cursor', label: 'Cursor', desc: 'Editor de código com IA integrada' },
+  { value: 'Continue', label: 'Continue', desc: 'Extensão de IA para VS Code' },
   { value: 'Cline', label: 'Cline', desc: 'Agente autônomo de código' },
   { value: 'Copilot', label: 'GitHub Copilot', desc: 'Assistente da Microsoft/GitHub' },
-  { value: 'Outro', label: 'Outro assistente', desc: 'ChatGPT, Gemini, outros' },
+  { value: 'Outro', label: 'ChatGPT / Gemini / outro', desc: 'Qualquer assistente de IA geral' },
 ]
 
 type ColorKey = 'green' | 'violet' | 'blue' | 'amber'
@@ -81,11 +164,12 @@ const colorMap: Record<ColorKey, { border: string; bg: string; text: string; ico
 }
 
 export function SkillManualTab({ areas, userId }: Props) {
-  const router = useRouter()
   const supabase = createClient()
+  const fileInputRef = useRef<HTMLInputElement>(null)
   const [loading, setLoading] = useState(false)
   const [success, setSuccess] = useState(false)
   const [error, setError] = useState('')
+  const [inputMode, setInputMode] = useState<'template' | 'upload' | 'livre'>('template')
 
   const [titulo, setTitulo] = useState('')
   const [descricao, setDescricao] = useState('')
@@ -94,6 +178,44 @@ export function SkillManualTab({ areas, userId }: Props) {
   const [areaDireitoId, setAreaDireitoId] = useState('')
   const [tagsInput, setTagsInput] = useState('')
   const [compatibilidade, setCompatibilidade] = useState<string[]>(['Outro'])
+
+  const tipoAtual = TIPOS.find(t => t.value === tipo)!
+
+  const handleTipoChange = (value: string) => {
+    setTipo(value)
+    if (inputMode === 'template') {
+      const t = TIPOS.find(x => x.value === value)
+      if (t) setConteudoMd(t.template)
+    }
+  }
+
+  const handleModeChange = (mode: 'template' | 'upload' | 'livre') => {
+    setInputMode(mode)
+    if (mode === 'template') {
+      setConteudoMd(tipoAtual.template)
+    } else if (mode === 'livre') {
+      setConteudoMd('')
+    }
+  }
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    if (!file.name.endsWith('.md') && !file.name.endsWith('.txt')) {
+      setError('Selecione um arquivo .md ou .txt')
+      return
+    }
+    const reader = new FileReader()
+    reader.onload = ev => {
+      const text = ev.target?.result as string
+      setConteudoMd(text)
+      if (!titulo && file.name) {
+        setTitulo(file.name.replace(/\.(md|txt)$/, '').replace(/[-_]/g, ' '))
+      }
+      setError('')
+    }
+    reader.readAsText(file)
+  }
 
   const toggleCompat = (c: string) => {
     setCompatibilidade(prev =>
@@ -124,31 +246,16 @@ export function SkillManualTab({ areas, userId }: Props) {
       setError('Erro ao enviar. Tente novamente.')
     } else {
       setSuccess(true)
-      setTitulo(''); setDescricao(''); setConteudoMd(''); setTipo('skill')
+      setTitulo(''); setDescricao(''); setConteudoMd(tipoAtual.template); setTipo('skill')
       setAreaDireitoId(''); setTagsInput(''); setCompatibilidade(['Outro'])
-      setTimeout(() => setSuccess(false), 4000)
+      setInputMode('template')
+      setTimeout(() => setSuccess(false), 5000)
     }
     setLoading(false)
   }
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
-      {/* Explicação introdutória */}
-      <div className="p-4 rounded-xl border border-zinc-800 bg-zinc-900/30">
-        <div className="flex gap-3">
-          <div className="w-8 h-8 rounded-lg bg-violet-500/10 border border-violet-500/20 flex items-center justify-center flex-shrink-0 mt-0.5">
-            <svg className="w-4 h-4 text-violet-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-          </div>
-          <div>
-            <p className="text-sm font-medium text-zinc-300 mb-1">O que é uma Skill MD?</p>
-            <p className="text-xs text-zinc-500 leading-relaxed">
-              É um arquivo de texto (.md) que você salva no assistente de IA uma vez, e ele passa a se comportar do jeito que você quer em todos os trabalhos seguintes — sem precisar repetir as instruções toda hora. Pense como um &quot;manual de uso pessoal&quot; que a IA lê antes de cada conversa.
-            </p>
-          </div>
-        </div>
-      </div>
 
       {/* Tipo de skill */}
       <div>
@@ -161,7 +268,7 @@ export function SkillManualTab({ areas, userId }: Props) {
               <button
                 key={t.value}
                 type="button"
-                onClick={() => setTipo(t.value)}
+                onClick={() => handleTipoChange(t.value)}
                 className={`p-4 rounded-xl border text-left transition-all ${
                   isSelected ? `${colors.border} ${colors.bg}` : 'border-zinc-800 bg-zinc-900/30 hover:border-zinc-700'
                 }`}
@@ -182,7 +289,7 @@ export function SkillManualTab({ areas, userId }: Props) {
         </div>
       </div>
 
-      {/* Dados principais */}
+      {/* Dados de identificação */}
       <div className="p-5 rounded-xl border border-zinc-800 bg-zinc-900/30 space-y-4">
         <h3 className="text-sm font-semibold text-zinc-400 uppercase tracking-wider">Identificação</h3>
         <div>
@@ -206,52 +313,120 @@ export function SkillManualTab({ areas, userId }: Props) {
             placeholder="Para que serve e quem vai se beneficiar"
           />
         </div>
-        <div>
-          <label className="block text-xs text-zinc-400 mb-1.5">Área do Direito</label>
-          <select
-            value={areaDireitoId}
-            onChange={e => setAreaDireitoId(e.target.value)}
-            className="w-full px-3 py-2.5 rounded-lg bg-zinc-900 border border-zinc-800 text-zinc-300 text-sm focus:outline-none focus:border-zinc-600"
-          >
-            <option value="">Todas as áreas / Geral</option>
-            {areas.map(a => <option key={a.id} value={a.id}>{a.nome}</option>)}
-          </select>
-        </div>
-        <div>
-          <label className="block text-xs text-zinc-400 mb-1.5">Tags (separadas por vírgula)</label>
-          <input
-            type="text"
-            value={tagsInput}
-            onChange={e => setTagsInput(e.target.value)}
-            className="w-full px-3 py-2.5 rounded-lg bg-zinc-900 border border-zinc-800 text-white placeholder-zinc-600 focus:outline-none focus:border-zinc-600 text-sm"
-            placeholder="trabalhista, análise de contrato, petição inicial"
-          />
-          <p className="text-xs text-zinc-600 mt-1">Palavras que facilitam a busca de outros usuários</p>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label className="block text-xs text-zinc-400 mb-1.5">Área do Direito</label>
+            <select
+              value={areaDireitoId}
+              onChange={e => setAreaDireitoId(e.target.value)}
+              className="w-full px-3 py-2.5 rounded-lg bg-zinc-900 border border-zinc-800 text-zinc-300 text-sm focus:outline-none focus:border-zinc-600"
+            >
+              <option value="">Todas as áreas / Geral</option>
+              {areas.map(a => <option key={a.id} value={a.id}>{a.nome}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="block text-xs text-zinc-400 mb-1.5">Tags (separadas por vírgula)</label>
+            <input
+              type="text"
+              value={tagsInput}
+              onChange={e => setTagsInput(e.target.value)}
+              className="w-full px-3 py-2.5 rounded-lg bg-zinc-900 border border-zinc-800 text-white placeholder-zinc-600 focus:outline-none focus:border-zinc-600 text-sm"
+              placeholder="trabalhista, análise de contrato"
+            />
+          </div>
         </div>
       </div>
 
-      {/* Conteúdo */}
-      <div className="p-5 rounded-xl border border-zinc-800 bg-zinc-900/30 space-y-3">
+      {/* Conteúdo — modo de entrada */}
+      <div className="p-5 rounded-xl border border-zinc-800 bg-zinc-900/30 space-y-4">
         <div>
           <h3 className="text-sm font-semibold text-zinc-400 uppercase tracking-wider mb-1">Conteúdo da Skill</h3>
-          <p className="text-xs text-zinc-600">Cole o texto da sua skill abaixo. Não precisa seguir nenhum formato especial — escreva como se estivesse dando instruções para um assistente.</p>
+          <p className="text-xs text-zinc-600">Escolha como quer inserir o conteúdo:</p>
         </div>
+
+        <div className="flex gap-2 flex-wrap">
+          <button
+            type="button"
+            onClick={() => handleModeChange('template')}
+            className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${
+              inputMode === 'template' ? 'border-green-500/50 bg-green-500/10 text-green-300' : 'border-zinc-700 bg-zinc-900 text-zinc-400 hover:border-zinc-600'
+            }`}
+          >
+            Usar modelo pronto
+          </button>
+          <button
+            type="button"
+            onClick={() => handleModeChange('upload')}
+            className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${
+              inputMode === 'upload' ? 'border-green-500/50 bg-green-500/10 text-green-300' : 'border-zinc-700 bg-zinc-900 text-zinc-400 hover:border-zinc-600'
+            }`}
+          >
+            Fazer upload de arquivo .md
+          </button>
+          <button
+            type="button"
+            onClick={() => handleModeChange('livre')}
+            className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${
+              inputMode === 'livre' ? 'border-green-500/50 bg-green-500/10 text-green-300' : 'border-zinc-700 bg-zinc-900 text-zinc-400 hover:border-zinc-600'
+            }`}
+          >
+            Escrever livremente
+          </button>
+        </div>
+
+        {inputMode === 'template' && (
+          <div className="p-3 rounded-lg bg-zinc-950/50 border border-zinc-800/50">
+            <p className="text-xs text-zinc-500 mb-2">
+              Modelo carregado para <span className="text-zinc-300 font-medium">{tipoAtual.label}</span>. Substitua os campos entre colchetes <span className="text-zinc-400 font-mono text-xs">[assim]</span> pelo seu conteúdo.
+            </p>
+          </div>
+        )}
+
+        {inputMode === 'upload' && (
+          <div>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".md,.txt"
+              onChange={handleFileUpload}
+              className="hidden"
+            />
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              className="w-full flex flex-col items-center justify-center gap-2 px-4 py-8 rounded-xl border-2 border-dashed border-zinc-700 hover:border-zinc-500 hover:bg-zinc-900/50 transition-colors"
+            >
+              <svg className="w-8 h-8 text-zinc-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 13h6m-3-3v6m5 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+              <span className="text-sm text-zinc-400">Clique para selecionar um arquivo <span className="text-zinc-300 font-medium">.md</span> ou <span className="text-zinc-300 font-medium">.txt</span></span>
+              <span className="text-xs text-zinc-600">O conteúdo será carregado abaixo para você revisar antes de enviar</span>
+            </button>
+            {conteudoMd && inputMode === 'upload' && (
+              <p className="text-xs text-green-400 mt-2">Arquivo carregado — {conteudoMd.length} caracteres. Revise o conteúdo abaixo.</p>
+            )}
+          </div>
+        )}
+
         <textarea
           required
-          rows={14}
-          value={conteudoMd}
+          rows={16}
+          value={inputMode === 'template' && !conteudoMd ? tipoAtual.template : conteudoMd}
           onChange={e => setConteudoMd(e.target.value)}
+          onFocus={() => {
+            if (inputMode === 'template' && !conteudoMd) setConteudoMd(tipoAtual.template)
+          }}
           className="w-full px-3 py-2.5 rounded-lg bg-zinc-900 border border-zinc-800 text-white placeholder-zinc-600 focus:outline-none focus:border-zinc-600 text-sm resize-none font-mono"
-          placeholder={`# Exemplo de skill\n\nVocê é um advogado especialista em direito do trabalho com 15 anos de experiência.\n\nAo analisar qualquer questão trabalhista:\n- Cite sempre os artigos da CLT aplicáveis\n- Mencione jurisprudência do TST quando relevante\n- Use linguagem técnica mas acessível ao cliente\n- Sempre indique o prazo prescricional quando aplicável\n\nNunca invente decisões judiciais. Se não tiver certeza, diga que é necessário verificar.`}
         />
-        <p className="text-xs text-zinc-600">{conteudoMd.length} caracteres</p>
+        <p className="text-xs text-zinc-600">{(inputMode === 'template' && !conteudoMd ? tipoAtual.template : conteudoMd).length} caracteres</p>
       </div>
 
       {/* Compatibilidade */}
       <div className="p-5 rounded-xl border border-zinc-800 bg-zinc-900/30 space-y-3">
         <div>
           <h3 className="text-sm font-semibold text-zinc-400 uppercase tracking-wider mb-1">Com qual assistente de IA funciona?</h3>
-          <p className="text-xs text-zinc-600">Selecione todos que se aplicam. Se não souber, marque &quot;Outro assistente&quot;.</p>
+          <p className="text-xs text-zinc-600">Selecione todos que se aplicam. Se não tiver certeza, marque a última opção.</p>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
           {COMPATIBILIDADE.map(c => (
@@ -299,7 +474,7 @@ export function SkillManualTab({ areas, userId }: Props) {
         >
           {loading ? 'Enviando...' : 'Enviar skill para revisão'}
         </button>
-        <p className="text-xs text-zinc-600">Revisada antes de ser publicada</p>
+        <p className="text-xs text-zinc-600">Será revisada antes de ser publicada</p>
       </div>
     </form>
   )

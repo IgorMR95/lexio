@@ -6,6 +6,39 @@ import { ImportTab } from './tabs/ImportTab'
 import { SkillManualTab } from './tabs/SkillManualTab'
 import type { CategoriaPrincipal, Subcategoria, Subnivel, AreaDireito } from '@/lib/supabase/types'
 
+function InfoDropdown({ title, color, children }: { title: string; color: 'green' | 'violet'; children: React.ReactNode }) {
+  const [open, setOpen] = useState(false)
+  const iconColor = color === 'green' ? 'text-green-400' : 'text-violet-400'
+  const borderColor = color === 'green' ? 'border-green-500/20' : 'border-violet-500/20'
+  const bgColor = color === 'green' ? 'bg-green-500/5' : 'bg-violet-500/5'
+  return (
+    <div className={`rounded-xl border ${borderColor} ${bgColor} overflow-hidden`}>
+      <button
+        type="button"
+        onClick={() => setOpen(o => !o)}
+        className="w-full flex items-center justify-between gap-3 px-4 py-3 text-left hover:brightness-110 transition-all"
+      >
+        <div className="flex items-center gap-2.5">
+          <svg className={`w-4 h-4 ${iconColor} flex-shrink-0`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          <span className="text-sm font-medium text-zinc-300">{title}</span>
+        </div>
+        <svg className={`w-4 h-4 text-zinc-500 transition-transform flex-shrink-0 ${open ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+        </svg>
+      </button>
+      {open && (
+        <div className="px-4 pb-4 border-t border-zinc-800/40">
+          <div className="pt-3 text-xs text-zinc-500 leading-relaxed space-y-2">
+            {children}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
 interface Props {
   categorias: CategoriaPrincipal[]
   subcategorias: Subcategoria[]
@@ -76,6 +109,42 @@ export function AlimentacaoClient({ categorias, subcategorias, subniveis, areas,
             </div>
           </div>
         </button>
+      </div>
+
+      {/* Dropdowns explicativos — aparecem conforme o tipo selecionado */}
+      <div className="mb-8 space-y-3">
+        {contentType === 'prompt' && (
+          <InfoDropdown title="O que é um prompt? Como funciona?" color="green">
+            <p>
+              Um <strong className="text-zinc-300">prompt</strong> é o texto de instrução que você digita para a IA antes ou junto com a sua pergunta. Ele define o contexto, o papel que a IA deve assumir e como ela deve responder.
+            </p>
+            <p>
+              Por exemplo: em vez de perguntar apenas <em>&quot;analise este contrato&quot;</em>, um prompt bem feito diria: <em>&quot;Você é um advogado especialista em contratos empresariais. Analise o contrato abaixo identificando: 1) as partes e suas obrigações, 2) cláusulas que possam ser abusivas, 3) riscos para o contratante, 4) sugestões de alteração. Use linguagem técnica e seja objetivo.&quot;</em>
+            </p>
+            <p>
+              A diferença de qualidade na resposta é enorme. Prompts bem construídos economizam tempo e geram resultados mais consistentes e confiáveis.
+            </p>
+            <p>
+              Ao compartilhar um prompt aqui, outros advogados poderão usar o mesmo texto como ponto de partida para suas consultas — e você contribui para elevar o padrão de uso da IA na advocacia.
+            </p>
+          </InfoDropdown>
+        )}
+        {contentType === 'skill' && (
+          <InfoDropdown title="O que é uma Skill MD? Como funciona?" color="violet">
+            <p>
+              Uma <strong className="text-zinc-300">Skill MD</strong> é um arquivo de texto simples que você &quot;instala&quot; no seu assistente de IA uma única vez. A partir daí, ele passa a se comportar do jeito que você quer em todas as conversas — sem precisar repetir as mesmas instruções toda hora.
+            </p>
+            <p>
+              Pense assim: hoje, toda vez que você abre o ChatGPT ou Claude, precisa explicar quem você é, como trabalha, que linguagem usar, o que nunca fazer. Com uma skill configurada, ele já sabe tudo isso antes de você começar a digitar.
+            </p>
+            <p>
+              O formato <strong className="text-zinc-300">.md</strong> (Markdown) é apenas um arquivo de texto com alguns sinais de formatação simples — como usar # para título. Você não precisa saber programar.
+            </p>
+            <p>
+              Ao compartilhar sua skill, outros advogados com perfil parecido com o seu podem usá-la como base, adaptando para sua realidade — e economizando horas de tentativa e erro.
+            </p>
+          </InfoDropdown>
+        )}
       </div>
 
       {contentType === 'prompt' && (

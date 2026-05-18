@@ -45,6 +45,7 @@ export function SkillsClient({ initialSkills, areas, topSemana, topAllTime, dest
   const [selectedTipo, setSelectedTipo] = useState('')
   const [selectedArea, setSelectedArea] = useState('')
   const [sortOrder, setSortOrder] = useState<'recent' | 'oldest'>('recent')
+  const [visibleCount, setVisibleCount] = useState(20)
 
   const filtered = useMemo(() => {
     let result = [...initialSkills]
@@ -134,13 +135,13 @@ export function SkillsClient({ initialSkills, areas, topSemana, topAllTime, dest
                 type="text"
                 placeholder="Buscar skills..."
                 value={search}
-                onChange={e => setSearch(e.target.value)}
+                onChange={e => { setSearch(e.target.value); setVisibleCount(20) }}
                 className="w-full pl-9 pr-4 py-2.5 rounded-lg bg-zinc-900 border border-zinc-800 text-white placeholder-zinc-500 focus:outline-none focus:border-zinc-600 text-sm"
               />
             </div>
             <select
               value={sortOrder}
-              onChange={e => setSortOrder(e.target.value as 'recent' | 'oldest')}
+              onChange={e => { setSortOrder(e.target.value as 'recent' | 'oldest'); setVisibleCount(20) }}
               className="px-3 py-2.5 rounded-lg bg-zinc-900 border border-zinc-800 text-zinc-300 text-sm focus:outline-none focus:border-zinc-600"
             >
               <option value="recent">Mais recentes</option>
@@ -154,7 +155,7 @@ export function SkillsClient({ initialSkills, areas, topSemana, topAllTime, dest
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-semibold text-zinc-400 uppercase tracking-wider">Filtros</span>
                   {hasFilters && (
-                    <button onClick={() => { setSearch(''); setSelectedTipo(''); setSelectedArea('') }} className="text-xs text-zinc-500 hover:text-white transition-colors">
+                    <button onClick={() => { setSearch(''); setSelectedTipo(''); setSelectedArea(''); setVisibleCount(20) }} className="text-xs text-zinc-500 hover:text-white transition-colors">
                       Limpar
                     </button>
                   )}
@@ -163,7 +164,7 @@ export function SkillsClient({ initialSkills, areas, topSemana, topAllTime, dest
                   <label className="text-xs text-zinc-500 mb-1.5 block">Tipo</label>
                   <select
                     value={selectedTipo}
-                    onChange={e => setSelectedTipo(e.target.value)}
+                    onChange={e => { setSelectedTipo(e.target.value); setVisibleCount(20) }}
                     className="w-full px-2.5 py-2 rounded-lg bg-zinc-900 border border-zinc-800 text-zinc-300 text-xs focus:outline-none focus:border-zinc-600"
                   >
                     <option value="">Todos</option>
@@ -174,7 +175,7 @@ export function SkillsClient({ initialSkills, areas, topSemana, topAllTime, dest
                   <label className="text-xs text-zinc-500 mb-1.5 block">Área do Direito</label>
                   <select
                     value={selectedArea}
-                    onChange={e => setSelectedArea(e.target.value)}
+                    onChange={e => { setSelectedArea(e.target.value); setVisibleCount(20) }}
                     className="w-full px-2.5 py-2 rounded-lg bg-zinc-900 border border-zinc-800 text-zinc-300 text-xs focus:outline-none focus:border-zinc-600"
                   >
                     <option value="">Todas</option>
@@ -188,7 +189,7 @@ export function SkillsClient({ initialSkills, areas, topSemana, topAllTime, dest
               <div className="lg:hidden grid grid-cols-2 gap-2 mb-4">
                 <select
                   value={selectedTipo}
-                  onChange={e => setSelectedTipo(e.target.value)}
+                  onChange={e => { setSelectedTipo(e.target.value); setVisibleCount(20) }}
                   className="px-2.5 py-2 rounded-lg bg-zinc-900 border border-zinc-800 text-zinc-300 text-xs focus:outline-none"
                 >
                   <option value="">Tipo</option>
@@ -196,7 +197,7 @@ export function SkillsClient({ initialSkills, areas, topSemana, topAllTime, dest
                 </select>
                 <select
                   value={selectedArea}
-                  onChange={e => setSelectedArea(e.target.value)}
+                  onChange={e => { setSelectedArea(e.target.value); setVisibleCount(20) }}
                   className="px-2.5 py-2 rounded-lg bg-zinc-900 border border-zinc-800 text-zinc-300 text-xs focus:outline-none"
                 >
                   <option value="">Área</option>
@@ -208,17 +209,32 @@ export function SkillsClient({ initialSkills, areas, topSemana, topAllTime, dest
                 <div className="text-center py-20">
                   <p className="text-zinc-500 mb-2">Nenhuma skill encontrada</p>
                   {hasFilters && (
-                    <button onClick={() => { setSearch(''); setSelectedTipo(''); setSelectedArea('') }} className="text-sm text-zinc-400 hover:text-white underline">
+                    <button onClick={() => { setSearch(''); setSelectedTipo(''); setSelectedArea(''); setVisibleCount(20) }} className="text-sm text-zinc-400 hover:text-white underline">
                       Limpar filtros
                     </button>
                   )}
                 </div>
               ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {filtered.map((skill: any) => (
-                    <SkillCard key={skill.id} skill={skill} />
-                  ))}
-                </div>
+                <>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {filtered.slice(0, visibleCount).map((skill: any) => (
+                      <SkillCard key={skill.id} skill={skill} />
+                    ))}
+                  </div>
+                  {visibleCount < filtered.length && (
+                    <div className="mt-8 flex flex-col items-center gap-2">
+                      <button
+                        onClick={() => setVisibleCount(v => v + 20)}
+                        className="px-6 py-2.5 rounded-xl border border-zinc-700 text-zinc-300 text-sm hover:border-zinc-500 hover:text-white transition-colors"
+                      >
+                        Carregar mais 20 skills
+                      </button>
+                      <p className="text-xs text-zinc-600">
+                        Exibindo {Math.min(visibleCount, filtered.length)} de {filtered.length}
+                      </p>
+                    </div>
+                  )}
+                </>
               )}
             </div>
           </div>

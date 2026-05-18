@@ -103,8 +103,8 @@ export default async function HomePage() {
           <div className="mt-16 flex flex-wrap gap-x-10 gap-y-4">
             {[
               { value: `+${totalPrompts ?? 500}`, label: 'prompts jurídicos' },
-              { value: `${totalFerramentas ?? 50}`,  label: 'IAs e ferramentas catalogadas' },
-              { value: `${totalSkills ?? 0}`,         label: 'skills MD disponíveis' },
+              { value: `+${totalFerramentas ?? 50}`, label: 'IAs e ferramentas catalogadas' },
+              { value: `+${totalSkills ?? 0}`,        label: 'skills MD disponíveis' },
               { value: '100%',                         label: 'gratuito para usar' },
             ].map((s, i, arr) => (
               <div key={i} className="flex items-center gap-2.5">
@@ -166,7 +166,7 @@ export default async function HomePage() {
                 </div>
                 <div className="flex items-center gap-2 mb-2">
                   <h3 className="text-lg font-bold text-white">Ranking de IAs Jurídicas</h3>
-                  <span className="px-2 py-0.5 rounded-full bg-violet-500/10 text-violet-400 text-[10px] border border-violet-500/20 font-medium">{totalFerramentas ?? 50} catalogadas</span>
+                  <span className="px-2 py-0.5 rounded-full bg-violet-500/10 text-violet-400 text-[10px] border border-violet-500/20 font-medium">+{totalFerramentas ?? 50} catalogadas</span>
                 </div>
                 <p className="text-sm text-zinc-500 leading-relaxed mb-4">
                   Avaliação independente de modelos (ChatGPT, Claude, Gemini…) e ferramentas jurídicas
@@ -191,7 +191,7 @@ export default async function HomePage() {
                 </div>
                 <div className="flex items-center gap-2 mb-2">
                   <h3 className="text-lg font-bold text-white">Skills MD</h3>
-                  <span className="px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-400 text-[10px] border border-blue-500/20 font-medium">{totalSkills ?? 0} disponíveis</span>
+                  <span className="px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-400 text-[10px] border border-blue-500/20 font-medium">+{totalSkills ?? 0} disponíveis</span>
                 </div>
                 <p className="text-sm text-zinc-500 leading-relaxed mb-4">
                   Arquivos de instrução estruturada para configurar agentes de IA com comportamento especializado

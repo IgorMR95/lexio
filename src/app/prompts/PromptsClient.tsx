@@ -39,6 +39,7 @@ export function PromptsClient({ initialPrompts, categorias, subcategorias, subni
   const [selectedOrigem, setSelectedOrigem] = useState('')
   const [selectedIdioma, setSelectedIdioma] = useState('')
   const [sortOrder, setSortOrder] = useState<'recent' | 'oldest'>('recent')
+  const [visibleCount, setVisibleCount] = useState(20)
 
   const filteredSubcategorias = selectedCategoria
     ? subcategorias.filter(s => s.categoria_id === selectedCategoria)
@@ -86,6 +87,7 @@ export function PromptsClient({ initialPrompts, categorias, subcategorias, subni
     setSelectedArea('')
     setSelectedOrigem('')
     setSelectedIdioma('')
+    setVisibleCount(20)
   }
 
   const hasFilters = search || selectedCategoria || selectedSubcategoria || selectedSubnivel || selectedArea || selectedOrigem || selectedIdioma
@@ -153,13 +155,13 @@ export function PromptsClient({ initialPrompts, categorias, subcategorias, subni
             type="text"
             placeholder="Buscar prompts..."
             value={search}
-            onChange={e => setSearch(e.target.value)}
+            onChange={e => { setSearch(e.target.value); setVisibleCount(20) }}
             className="w-full pl-9 pr-4 py-2.5 rounded-lg bg-zinc-900 border border-zinc-800 text-white placeholder-zinc-500 focus:outline-none focus:border-zinc-600 text-sm"
           />
         </div>
         <select
           value={sortOrder}
-          onChange={e => setSortOrder(e.target.value as 'recent' | 'oldest')}
+          onChange={e => { setSortOrder(e.target.value as 'recent' | 'oldest'); setVisibleCount(20) }}
           className="px-3 py-2.5 rounded-lg bg-zinc-900 border border-zinc-800 text-zinc-300 text-sm focus:outline-none focus:border-zinc-600"
         >
           <option value="recent">Mais recentes</option>
@@ -184,7 +186,7 @@ export function PromptsClient({ initialPrompts, categorias, subcategorias, subni
               <label className="text-xs text-zinc-500 mb-1.5 block">Categoria</label>
               <select
                 value={selectedCategoria}
-                onChange={e => { setSelectedCategoria(e.target.value); setSelectedSubcategoria(''); setSelectedSubnivel('') }}
+                onChange={e => { setSelectedCategoria(e.target.value); setSelectedSubcategoria(''); setSelectedSubnivel(''); setVisibleCount(20) }}
                 className="w-full px-2.5 py-2 rounded-lg bg-zinc-900 border border-zinc-800 text-zinc-300 text-xs focus:outline-none focus:border-zinc-600"
               >
                 <option value="">Todas</option>
@@ -197,7 +199,7 @@ export function PromptsClient({ initialPrompts, categorias, subcategorias, subni
                 <label className="text-xs text-zinc-500 mb-1.5 block">Subcategoria</label>
                 <select
                   value={selectedSubcategoria}
-                  onChange={e => { setSelectedSubcategoria(e.target.value); setSelectedSubnivel('') }}
+                  onChange={e => { setSelectedSubcategoria(e.target.value); setSelectedSubnivel(''); setVisibleCount(20) }}
                   className="w-full px-2.5 py-2 rounded-lg bg-zinc-900 border border-zinc-800 text-zinc-300 text-xs focus:outline-none focus:border-zinc-600"
                 >
                   <option value="">Todas</option>
@@ -211,7 +213,7 @@ export function PromptsClient({ initialPrompts, categorias, subcategorias, subni
                 <label className="text-xs text-zinc-500 mb-1.5 block">Subnível</label>
                 <select
                   value={selectedSubnivel}
-                  onChange={e => setSelectedSubnivel(e.target.value)}
+                  onChange={e => { setSelectedSubnivel(e.target.value); setVisibleCount(20) }}
                   className="w-full px-2.5 py-2 rounded-lg bg-zinc-900 border border-zinc-800 text-zinc-300 text-xs focus:outline-none focus:border-zinc-600"
                 >
                   <option value="">Todos</option>
@@ -224,7 +226,7 @@ export function PromptsClient({ initialPrompts, categorias, subcategorias, subni
               <label className="text-xs text-zinc-500 mb-1.5 block">Área do Direito</label>
               <select
                 value={selectedArea}
-                onChange={e => setSelectedArea(e.target.value)}
+                onChange={e => { setSelectedArea(e.target.value); setVisibleCount(20) }}
                 className="w-full px-2.5 py-2 rounded-lg bg-zinc-900 border border-zinc-800 text-zinc-300 text-xs focus:outline-none focus:border-zinc-600"
               >
                 <option value="">Todas</option>
@@ -236,7 +238,7 @@ export function PromptsClient({ initialPrompts, categorias, subcategorias, subni
               <label className="text-xs text-zinc-500 mb-1.5 block">Origem</label>
               <select
                 value={selectedOrigem}
-                onChange={e => { setSelectedOrigem(e.target.value); setSelectedIdioma('') }}
+                onChange={e => { setSelectedOrigem(e.target.value); setSelectedIdioma(''); setVisibleCount(20) }}
                 className="w-full px-2.5 py-2 rounded-lg bg-zinc-900 border border-zinc-800 text-zinc-300 text-xs focus:outline-none focus:border-zinc-600"
               >
                 <option value="">Todos</option>
@@ -250,7 +252,7 @@ export function PromptsClient({ initialPrompts, categorias, subcategorias, subni
                 <label className="text-xs text-zinc-500 mb-1.5 block">Idioma</label>
                 <select
                   value={selectedIdioma}
-                  onChange={e => setSelectedIdioma(e.target.value)}
+                  onChange={e => { setSelectedIdioma(e.target.value); setVisibleCount(20) }}
                   className="w-full px-2.5 py-2 rounded-lg bg-zinc-900 border border-zinc-800 text-zinc-300 text-xs focus:outline-none focus:border-zinc-600"
                 >
                   <option value="">Todos os idiomas</option>
@@ -275,7 +277,7 @@ export function PromptsClient({ initialPrompts, categorias, subcategorias, subni
           <div className="lg:hidden grid grid-cols-2 gap-2 mb-4">
             <select
               value={selectedCategoria}
-              onChange={e => { setSelectedCategoria(e.target.value); setSelectedSubcategoria(''); setSelectedSubnivel('') }}
+              onChange={e => { setSelectedCategoria(e.target.value); setSelectedSubcategoria(''); setSelectedSubnivel(''); setVisibleCount(20) }}
               className="px-2.5 py-2 rounded-lg bg-zinc-900 border border-zinc-800 text-zinc-300 text-xs focus:outline-none"
             >
               <option value="">Categoria</option>
@@ -283,7 +285,7 @@ export function PromptsClient({ initialPrompts, categorias, subcategorias, subni
             </select>
             <select
               value={selectedArea}
-              onChange={e => setSelectedArea(e.target.value)}
+              onChange={e => { setSelectedArea(e.target.value); setVisibleCount(20) }}
               className="px-2.5 py-2 rounded-lg bg-zinc-900 border border-zinc-800 text-zinc-300 text-xs focus:outline-none"
             >
               <option value="">Área</option>
@@ -301,11 +303,26 @@ export function PromptsClient({ initialPrompts, categorias, subcategorias, subni
               )}
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {filtered.map(prompt => (
-                <PromptCard key={prompt.id} prompt={prompt} />
-              ))}
-            </div>
+            <>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {filtered.slice(0, visibleCount).map(prompt => (
+                  <PromptCard key={prompt.id} prompt={prompt} />
+                ))}
+              </div>
+              {visibleCount < filtered.length && (
+                <div className="mt-8 flex flex-col items-center gap-2">
+                  <button
+                    onClick={() => setVisibleCount(v => v + 20)}
+                    className="px-6 py-2.5 rounded-xl border border-zinc-700 text-zinc-300 text-sm hover:border-zinc-500 hover:text-white transition-colors"
+                  >
+                    Carregar mais 20 prompts
+                  </button>
+                  <p className="text-xs text-zinc-600">
+                    Exibindo {Math.min(visibleCount, filtered.length)} de {filtered.length}
+                  </p>
+                </div>
+              )}
+            </>
           )}
         </div>
       </div>

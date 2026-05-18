@@ -1027,6 +1027,7 @@ function FeramentasAdminTab() {
   const [form, setForm] = useState(FORM_VAZIO)
   const [saving, setSaving] = useState(false)
   const [erro, setErro] = useState('')
+  const [reviewTarget, setReviewTarget] = useState<any | null>(null)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -1277,7 +1278,7 @@ function FeramentasAdminTab() {
             <div>
               <p className="text-[11px] font-semibold text-zinc-500 uppercase tracking-widest mb-2">Modelos de IA ({modelos.length})</p>
               <div className="rounded-xl border border-zinc-800 divide-y divide-zinc-800/60 overflow-hidden">
-                {modelos.map(f => <FerramentaRow key={f.id} f={f} onEditar={abrirEditar} onDestaque={toggleDestaque} onStatus={setStatus} onDel={del} />)}
+                {modelos.map(f => <FerramentaRow key={f.id} f={f} onEditar={abrirEditar} onDestaque={toggleDestaque} onStatus={setStatus} onDel={del} onReview={setReviewTarget} />)}
               </div>
             </div>
           )}
@@ -1285,9 +1286,12 @@ function FeramentasAdminTab() {
             <div>
               <p className="text-[11px] font-semibold text-zinc-500 uppercase tracking-widest mb-2">Ferramentas ({ferramentas_.length})</p>
               <div className="rounded-xl border border-zinc-800 divide-y divide-zinc-800/60 overflow-hidden">
-                {ferramentas_.map(f => <FerramentaRow key={f.id} f={f} onEditar={abrirEditar} onDestaque={toggleDestaque} onStatus={setStatus} onDel={del} />)}
+                {ferramentas_.map(f => <FerramentaRow key={f.id} f={f} onEditar={abrirEditar} onDestaque={toggleDestaque} onStatus={setStatus} onDel={del} onReview={setReviewTarget} />)}
               </div>
             </div>
+          )}
+          {reviewTarget && (
+            <ReviewModal ferramenta={reviewTarget} onClose={() => setReviewTarget(null)} onSaved={load} />
           )}
         </div>
       )}
@@ -1295,12 +1299,13 @@ function FeramentasAdminTab() {
   )
 }
 
-function FerramentaRow({ f, onEditar, onDestaque, onStatus, onDel }: {
+function FerramentaRow({ f, onEditar, onDestaque, onStatus, onDel, onReview }: {
   f: any
   onEditar: (f: any) => void
   onDestaque: (id: string, destaque: boolean) => void
   onStatus: (id: string, status: string) => void
   onDel: (id: string, nome: string) => void
+  onReview: (f: any) => void
 }) {
   return (
     <div className="flex items-center gap-3 px-4 py-3 bg-zinc-900/20 hover:bg-zinc-900/40 transition-colors">
@@ -1332,6 +1337,11 @@ function FerramentaRow({ f, onEditar, onDestaque, onStatus, onDel }: {
 
       {/* Ações */}
       <div className="flex items-center gap-1 shrink-0">
+        <button onClick={() => onReview(f)}
+          className="text-xs px-2.5 py-1.5 rounded-lg border border-zinc-700 text-zinc-400 hover:text-green-300 hover:border-green-500/40 transition-colors"
+          title="Escrever review">
+          Review
+        </button>
         <button onClick={() => onEditar(f)}
           className="text-xs px-2.5 py-1.5 rounded-lg border border-zinc-700 text-zinc-400 hover:text-white hover:border-zinc-500 transition-colors">
           Editar
@@ -1358,6 +1368,170 @@ function FerramentaRow({ f, onEditar, onDestaque, onStatus, onDel }: {
           title="Excluir">
           ✕
         </button>
+      </div>
+    </div>
+  )
+}
+
+function ReviewModal({ ferramenta, onClose, onSaved }: { ferramenta: any; onClose: () => void; onSaved: () => void }) {
+  const supabase = createClient()
+  const [resumo, setResumo] = useState('')
+  const [notaGeral, setNotaGeral] = useState<number>(0)
+  const [recomendado, setRecomendado] = useState(false)
+  const [posInput, setPosInput] = useState('')
+  const [negInput, setNegInput] = useState('')
+  const [positivos, setPositivos] = useState<string[]>([])
+  const [negativos, setNegativos] = useState<string[]>([])
+  const [saving, setSaving] = useState(false)
+  const [loaded, setLoaded] = useState(false)
+
+  useEffect(() => {
+    (async () => {
+      const { data } = await (supabase as any)
+        .from('ferramenta_reviews').select('*').eq('ferramenta_id', ferramenta.id).single()
+      if (data) {
+        setResumo(data.resumo ?? '')
+        setNotaGeral(data.nota_geral ?? 0)
+        setRecomendado(data.recomendado ?? false)
+        setPositivos(data.pontos_positivos ?? [])
+        setNegativos(data.pontos_negativos ?? [])
+      }
+      setLoaded(true)
+    })()
+  }, [ferramenta.id])
+
+  const addItem = (tipo: 'pos' | 'neg') => {
+    const val = tipo === 'pos' ? posInput.trim() : negInput.trim()
+    if (!val) return
+    if (tipo === 'pos') { setPositivos(p => [...p, val]); setPosInput('') }
+    else { setNegativos(p => [...p, val]); setNegInput('') }
+  }
+
+  const salvar = async () => {
+    setSaving(true)
+    const payload = {
+      ferramenta_id: ferramenta.id,
+      resumo: resumo || null,
+      nota_geral: notaGeral || null,
+      recomendado,
+      pontos_positivos: positivos,
+      pontos_negativos: negativos,
+      atualizado_em: new Date().toISOString(),
+    }
+    await (supabase as any).from('ferramenta_reviews').upsert(payload, { onConflict: 'ferramenta_id' })
+    setSaving(false)
+    onSaved()
+    onClose()
+  }
+
+  if (!loaded) return (
+    <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center">
+      <p className="text-zinc-400 text-sm">Carregando…</p>
+    </div>
+  )
+
+  return (
+    <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4" onClick={onClose}>
+      <div className="bg-zinc-950 border border-zinc-800 rounded-2xl w-full max-w-xl max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+        <div className="flex items-center justify-between px-5 py-4 border-b border-zinc-800">
+          <div>
+            <p className="text-xs text-zinc-500 mb-0.5">Review</p>
+            <h3 className="text-base font-semibold text-white">{ferramenta.nome}</h3>
+          </div>
+          <button onClick={onClose} className="text-zinc-600 hover:text-white transition-colors text-lg leading-none">✕</button>
+        </div>
+
+        <div className="p-5 space-y-5">
+          {/* Nota */}
+          <div>
+            <label className="block text-xs text-zinc-500 mb-2">Nota geral (0 = sem nota)</label>
+            <div className="flex gap-1">
+              {[1, 2, 3, 4, 5].map(n => (
+                <button key={n} onClick={() => setNotaGeral(notaGeral === n ? 0 : n)}
+                  className={`text-xl transition-colors ${n <= notaGeral ? 'text-yellow-400' : 'text-zinc-700 hover:text-yellow-600'}`}>
+                  ★
+                </button>
+              ))}
+              {notaGeral > 0 && <span className="text-xs text-zinc-500 self-center ml-2">{notaGeral}/5</span>}
+            </div>
+          </div>
+
+          {/* Recomendado */}
+          <label className="flex items-center gap-3 cursor-pointer group">
+            <div onClick={() => setRecomendado(p => !p)}
+              className={`w-10 h-6 rounded-full border-2 transition-colors relative ${recomendado ? 'bg-green-500 border-green-500' : 'bg-zinc-800 border-zinc-700'}`}>
+              <span className={`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-all ${recomendado ? 'left-4' : 'left-0.5'}`} />
+            </div>
+            <span className="text-sm text-zinc-300 group-hover:text-white transition-colors">Recomendado pela equipe Midori</span>
+          </label>
+
+          {/* Resumo */}
+          <div>
+            <label className="block text-xs text-zinc-500 mb-1.5">Visão geral / resumo</label>
+            <textarea value={resumo} onChange={e => setResumo(e.target.value)} rows={3}
+              className="w-full px-3 py-2 rounded-lg bg-zinc-900 border border-zinc-800 text-white text-sm focus:outline-none focus:border-zinc-600 resize-none" />
+          </div>
+
+          {/* Pontos positivos */}
+          <div>
+            <label className="block text-xs text-zinc-500 mb-1.5">Pontos positivos</label>
+            <div className="flex gap-2 mb-2">
+              <input value={posInput} onChange={e => setPosInput(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), addItem('pos'))}
+                placeholder="Adicionar ponto… (Enter para confirmar)"
+                className="flex-1 px-3 py-2 rounded-lg bg-zinc-900 border border-zinc-800 text-white text-sm focus:outline-none focus:border-zinc-600" />
+              <button onClick={() => addItem('pos')}
+                className="px-3 py-2 rounded-lg bg-zinc-800 text-zinc-300 text-sm hover:bg-zinc-700 transition-colors">+</button>
+            </div>
+            {positivos.length > 0 && (
+              <ul className="space-y-1.5">
+                {positivos.map((p, i) => (
+                  <li key={i} className="flex items-center gap-2 text-sm text-zinc-300">
+                    <span className="text-green-500 shrink-0">✓</span>
+                    <span className="flex-1">{p}</span>
+                    <button onClick={() => setPositivos(prev => prev.filter((_, j) => j !== i))}
+                      className="text-zinc-700 hover:text-red-400 transition-colors text-xs shrink-0">✕</button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+
+          {/* Pontos negativos */}
+          <div>
+            <label className="block text-xs text-zinc-500 mb-1.5">Pontos negativos</label>
+            <div className="flex gap-2 mb-2">
+              <input value={negInput} onChange={e => setNegInput(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), addItem('neg'))}
+                placeholder="Adicionar ponto… (Enter para confirmar)"
+                className="flex-1 px-3 py-2 rounded-lg bg-zinc-900 border border-zinc-800 text-white text-sm focus:outline-none focus:border-zinc-600" />
+              <button onClick={() => addItem('neg')}
+                className="px-3 py-2 rounded-lg bg-zinc-800 text-zinc-300 text-sm hover:bg-zinc-700 transition-colors">+</button>
+            </div>
+            {negativos.length > 0 && (
+              <ul className="space-y-1.5">
+                {negativos.map((p, i) => (
+                  <li key={i} className="flex items-center gap-2 text-sm text-zinc-300">
+                    <span className="text-red-500 shrink-0">✕</span>
+                    <span className="flex-1">{p}</span>
+                    <button onClick={() => setNegativos(prev => prev.filter((_, j) => j !== i))}
+                      className="text-zinc-700 hover:text-red-400 transition-colors text-xs shrink-0">✕</button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        </div>
+
+        <div className="px-5 pb-5 flex gap-2">
+          <button onClick={salvar} disabled={saving}
+            className="flex-1 py-2.5 rounded-lg bg-white text-zinc-950 font-semibold text-sm hover:bg-zinc-100 transition-colors disabled:opacity-50">
+            {saving ? 'Salvando…' : 'Salvar review'}
+          </button>
+          <button onClick={onClose} className="px-4 py-2.5 rounded-lg border border-zinc-700 text-zinc-400 text-sm hover:text-white transition-colors">
+            Cancelar
+          </button>
+        </div>
       </div>
     </div>
   )

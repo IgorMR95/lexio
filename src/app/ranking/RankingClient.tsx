@@ -98,6 +98,7 @@ export function RankingClient({
   const [periodo, setPeriodo]                 = useState<Periodo>('geral')
   const [perfisAtivos, setPerfisAtivos]       = useState<string[]>([])
   const [usosAtivos, setUsosAtivos]           = useState<string[]>([])
+  const [apenasDestaque, setApenasDestaque]   = useState(false)
   const [meusVotos, setMeusVotos]             = useState(initialMeusVotos)
   const [votosGeralState, setVotosGeralState] = useState(votosGeral)
   const [mostrarSugerir, setMostrarSugerir]   = useState(false)
@@ -112,6 +113,7 @@ export function RankingClient({
   function limparFiltros() {
     setPerfisAtivos([])
     setUsosAtivos([])
+    setApenasDestaque(false)
   }
 
   const votosAtivos = useMemo(() => {
@@ -132,7 +134,7 @@ export function RankingClient({
     return ferramentas
       .filter(f => {
         if (f.grupo !== grupoAtivo) return false
-        // filtro cumulativo: deve ter PELO MENOS UM perfil ativo E PELO MENOS UM uso ativo
+        if (apenasDestaque && !f.destaque) return false
         if (perfisAtivos.length > 0 && !perfisAtivos.some(pid => f.perfil_ids?.includes(pid))) return false
         if (usosAtivos.length > 0   && !usosAtivos.some(uid => f.uso_ids?.includes(uid)))   return false
         return true
@@ -146,7 +148,7 @@ export function RankingClient({
 
   const maxVotos   = rankingAtual[0]?.votos_total ?? 0
   const totalVotos = votosGeralState.reduce((s, v) => s + v.total_votos, 0)
-  const temFiltros = perfisAtivos.length > 0 || usosAtivos.length > 0
+  const temFiltros = perfisAtivos.length > 0 || usosAtivos.length > 0 || apenasDestaque
 
   const handleVoto = async (ferramentaId: string) => {
     if (!userId || periodo !== 'geral') return
@@ -301,6 +303,27 @@ export function RankingClient({
               </div>
             )}
 
+            {/* Destaque */}
+            <div>
+              <label className="text-xs text-zinc-500 mb-1.5 block">Curadoria</label>
+              <button
+                onClick={() => setApenasDestaque(p => !p)}
+                className={`w-full text-left px-2.5 py-1.5 rounded-lg text-xs transition-colors flex items-center gap-2 ${
+                  apenasDestaque ? 'bg-zinc-800 text-white' : 'text-zinc-500 hover:text-zinc-300 hover:bg-zinc-900'
+                }`}>
+                <span className={`w-3 h-3 rounded border shrink-0 flex items-center justify-center transition-colors ${
+                  apenasDestaque ? 'bg-yellow-400 border-yellow-400' : 'border-zinc-600'
+                }`}>
+                  {apenasDestaque && (
+                    <svg className="w-2 h-2 text-zinc-900" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                    </svg>
+                  )}
+                </span>
+                Apenas destaques ★
+              </button>
+            </div>
+
             {/* Período — só na aba ranking */}
             {aba === 'ranking' && (
               <div>
@@ -404,6 +427,7 @@ function AbaRanking({
   usosAtivos: string[]
   perfis: Categoria[]
   usos: Categoria[]
+  apenasDestaque?: boolean
   onLimparFiltros: () => void
 }) {
   // Para o botão de voto, rastreamos por ferramenta_id apenas (sem categoria específica)
@@ -476,8 +500,10 @@ function AbaRanking({
                   }`}>{f.nome[0]?.toUpperCase()}</div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap mb-1">
-                      <span className="text-sm font-semibold text-white">{f.nome}</span>
-                      {f.destaque && <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-yellow-500/10 text-yellow-400 border border-yellow-500/20 shrink-0">Destaque</span>}
+                      <Link href={`/ranking/${f.id}`} className="text-sm font-semibold text-white hover:text-green-300 transition-colors">
+                        {f.nome}
+                      </Link>
+                      {f.destaque && <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-yellow-500/10 text-yellow-400 border border-yellow-500/20 shrink-0">★ Destaque</span>}
                       <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-zinc-800 text-zinc-500 border border-zinc-700/50 shrink-0">{TIPO_LABEL[f.tipo] ?? f.tipo}</span>
                     </div>
                     {f.descricao && <p className="text-xs text-zinc-500 mb-2 leading-relaxed line-clamp-2">{f.descricao}</p>}
@@ -490,11 +516,16 @@ function AbaRanking({
                         {temVotos ? `${f.votos_total} ${f.votos_total === 1 ? 'voto' : 'votos'}` : 'sem votos'}
                       </span>
                     </div>
-                    {f.url && (
-                      <a href={f.url} target="_blank" rel="noopener noreferrer" className="inline-block mt-2 text-[11px] text-zinc-700 hover:text-zinc-400 transition-colors">
-                        {f.url.replace(/^https?:\/\//, '').replace(/\/$/, '')} ↗
-                      </a>
-                    )}
+                    <div className="flex items-center gap-3 mt-1.5">
+                      {f.url && (
+                        <a href={f.url} target="_blank" rel="noopener noreferrer" className="text-[11px] text-zinc-600 hover:text-zinc-400 transition-colors">
+                          {f.url.replace(/^https?:\/\//, '').replace(/\/$/, '')} ↗
+                        </a>
+                      )}
+                      <Link href={`/ranking/${f.id}`} className="text-[11px] text-zinc-600 hover:text-green-400 transition-colors ml-auto">
+                        Ver review →
+                      </Link>
+                    </div>
                   </div>
                   <button
                     onClick={() => handleVoto(f.id)}

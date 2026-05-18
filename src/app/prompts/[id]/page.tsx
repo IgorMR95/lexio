@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation'
 import { CopyButton } from '@/components/ui/CopyButton'
 import { UpvoteButton } from '@/components/ui/UpvoteButton'
 import { ComentariosSection } from '@/components/ui/ComentariosSection'
+import { UsePromptButtons } from '@/components/ui/UsePromptButtons'
 import Link from 'next/link'
 
 export const dynamic = 'force-dynamic'
@@ -107,7 +108,7 @@ export default async function PromptPage({ params }: { params: { id: string } })
                     <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 24 24">
                       <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
                     </svg>
-                    Destaque
+                    Destaque editorial
                   </span>
                 )}
               </div>
@@ -124,6 +125,13 @@ export default async function PromptPage({ params }: { params: { id: string } })
           {(prompt as any).descricao_curta && (
             <p className="text-zinc-400 mb-6 leading-relaxed">{(prompt as any).descricao_curta}</p>
           )}
+
+          {/* Como usar — instrução rápida */}
+          <div className="mb-4 px-4 py-3 rounded-lg bg-zinc-900/60 border border-zinc-800 text-xs text-zinc-500 leading-relaxed">
+            <span className="text-zinc-400 font-medium">Como usar: </span>
+            Copie o texto abaixo e cole no ChatGPT, Claude ou Gemini. Se houver campos entre colchetes como{' '}
+            <span className="text-zinc-300 font-mono">[nome da parte]</span>, substitua pelo texto do seu caso antes de enviar.
+          </div>
 
           <div className="relative">
             <div className="absolute top-3 right-3 z-10">
@@ -154,6 +162,48 @@ export default async function PromptPage({ params }: { params: { id: string } })
 
         {/* Sidebar */}
         <div className="space-y-4">
+
+          {/* Botões de uso — card principal */}
+          <div className="p-4 rounded-xl border border-zinc-800 bg-zinc-900/50">
+            <h3 className="text-xs font-semibold text-zinc-400 uppercase tracking-wider mb-3">Usar este prompt</h3>
+            <UsePromptButtons text={(prompt as any).texto_completo} />
+          </div>
+
+          {/* Curadoria */}
+          <div className="p-4 rounded-xl border border-zinc-800 bg-zinc-900/50">
+            <h3 className="text-xs font-semibold text-zinc-400 uppercase tracking-wider mb-3">Curadoria</h3>
+            <div className="space-y-2.5">
+              <div className="flex items-start gap-2">
+                <svg className="w-4 h-4 text-green-500 mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <p className="text-xs text-zinc-400 leading-relaxed">Revisado e aprovado pela equipe editorial antes da publicação</p>
+              </div>
+              <div className="flex items-start gap-2">
+                <svg className="w-4 h-4 text-green-500 mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <p className="text-xs text-zinc-400 leading-relaxed">Construído com base em prática jurídica real, não em teoria</p>
+              </div>
+              <div className="flex items-start gap-2">
+                <svg className="w-4 h-4 text-green-500 mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <p className="text-xs text-zinc-400 leading-relaxed">Testado nas principais ferramentas de IA disponíveis</p>
+              </div>
+              {isDestaque && (
+                <div className="mt-1 pt-2.5 border-t border-zinc-800">
+                  <div className="flex items-start gap-2">
+                    <svg className="w-4 h-4 text-yellow-400 mt-0.5 shrink-0" fill="currentColor" viewBox="0 0 24 24">
+                      <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
+                    </svg>
+                    <p className="text-xs text-zinc-400 leading-relaxed">Marcado como destaque editorial — entre os mais úteis e testados da base</p>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+
           <div className="p-4 rounded-xl border border-zinc-800 bg-zinc-900/50">
             <h3 className="text-xs font-semibold text-zinc-400 uppercase tracking-wider mb-3">Classificação</h3>
             <dl className="space-y-2.5">
@@ -241,7 +291,7 @@ export default async function PromptPage({ params }: { params: { id: string } })
             <p className="text-xs text-zinc-500 mb-3">Tem um prompt para compartilhar?</p>
             <Link
               href={user ? '/dashboard/novo-prompt' : '/signup'}
-              className="block w-full py-2 rounded-lg bg-white text-zinc-950 text-sm font-medium hover:bg-zinc-100 transition-colors"
+              className="block w-full py-2 rounded-lg bg-zinc-800 text-zinc-300 text-sm font-medium hover:bg-zinc-700 hover:text-white transition-colors"
             >
               {user ? 'Enviar prompt' : 'Criar conta'}
             </Link>

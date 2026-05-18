@@ -6,14 +6,19 @@ export const revalidate = 60
 export default async function SkillsPage() {
   const supabase = createClient()
 
-  // Batch 1 — metadados + rankings (sem buscar as skills em si)
+  // Batch 1 — listagem + metadados (tudo em paralelo)
   const [
+    { data: skills },
     { data: areas },
     { data: topSemana },
     { data: topAllTimeRaw },
     { data: destaques },
-    { count: totalCount },
   ] = await Promise.all([
+    (supabase as any)
+      .from('skills')
+      .select('id, titulo, descricao, tipo, compatibilidade, tags, area_direito_id, autor_id, status, destaque, created_at, areas_direito(id, nome, slug)')
+      .in('status', ['ativo', 'aprovado'])
+      .order('created_at', { ascending: false }),
     supabase.from('areas_direito').select('*').eq('ativo', true).order('ordem'),
     (supabase as any)
       .from('skills_destaques_semana')
@@ -31,10 +36,6 @@ export default async function SkillsPage() {
       .in('status', ['ativo', 'aprovado'])
       .order('created_at', { ascending: false })
       .limit(20),
-    (supabase as any)
-      .from('skills')
-      .select('*', { count: 'exact', head: true })
-      .in('status', ['ativo', 'aprovado']),
   ])
 
   // Batch 2 — rankings via views SQL
@@ -83,22 +84,29 @@ export default async function SkillsPage() {
       .sort((a: any, b: any) => b.total_votos - a.total_votos)
   }
 
-  // Perfis dos autores dos rankings
+  // Perfis dos autores
   const rankingAutorIds = Array.from(new Set([
     ...(rankingAprovados ?? []).map((r: any) => r.autor_id),
     ...(rankingDestaques ?? []).map((r: any) => r.autor_id),
     ...(rankingVotos ?? []).map((r: any) => r.autor_id),
     ...(rankingSemana ?? []).map((r: any) => r.autor_id),
   ]))
+  const skillAutorIds = Array.from(new Set((skills ?? []).map((s: any) => s.autor_id).filter(Boolean)))
+  const allAutorIds = Array.from(new Set([...skillAutorIds, ...rankingAutorIds]))
 
   const profileMap: Record<string, any> = {}
-  if (rankingAutorIds.length > 0) {
+  if (allAutorIds.length > 0) {
     const { data: profiles } = await (supabase as any)
       .from('profiles')
       .select('id, full_name, email, avatar_url, instituicao')
-      .in('id', rankingAutorIds)
+      .in('id', allAutorIds)
     ;(profiles ?? []).forEach((p: any) => { profileMap[p.id] = p })
   }
+
+  const skillsWithAuthor = (skills ?? []).map((s: any) => ({
+    ...s,
+    profiles: profileMap[s.autor_id] ? { full_name: profileMap[s.autor_id].full_name, email: profileMap[s.autor_id].email } : null,
+  }))
 
   const buildRanking = (rows: any[], countField: string) =>
     (rows ?? []).map((r: any) => ({
@@ -119,7 +127,7 @@ export default async function SkillsPage() {
 
   return (
     <SkillsClient
-      totalCount={totalCount ?? 0}
+      initialSkills={skillsWithAuthor}
       areas={areas ?? []}
       topSemana={topSemana ?? []}
       topAllTime={topAllTime}

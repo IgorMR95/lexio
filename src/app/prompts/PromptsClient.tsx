@@ -1,8 +1,8 @@
 'use client'
 
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useMemo } from 'react'
 import Link from 'next/link'
-import type { CategoriaPrincipal, Subcategoria, Subnivel, AreaDireito } from '@/lib/supabase/types'
+import type { CategoriaPrincipal, Subcategoria, Subnivel, AreaDireito, PromptWithRelations } from '@/lib/supabase/types'
 import { MelhoresContent } from './MelhoresContent'
 import { UsuariosDestaqueContent } from './UsuariosDestaqueContent'
 
@@ -20,7 +20,7 @@ interface UsuariosDestaqueData {
 }
 
 interface Props {
-  totalCount: number
+  initialPrompts: PromptWithRelations[]
   categorias: CategoriaPrincipal[]
   subcategorias: Subcategoria[]
   subniveis: Subnivel[]
@@ -29,7 +29,7 @@ interface Props {
   usuariosDestaque: UsuariosDestaqueData
 }
 
-export function PromptsClient({ totalCount, categorias, subcategorias, subniveis, areas, melhores, usuariosDestaque }: Props) {
+export function PromptsClient({ initialPrompts, categorias, subcategorias, subniveis, areas, melhores, usuariosDestaque }: Props) {
   const [activeTab, setActiveTab] = useState<'todos' | 'melhores' | 'usuarios'>('todos')
   const [search, setSearch] = useState('')
   const [selectedCategoria, setSelectedCategoria] = useState('')
@@ -39,56 +39,44 @@ export function PromptsClient({ totalCount, categorias, subcategorias, subniveis
   const [selectedOrigem, setSelectedOrigem] = useState('')
   const [selectedIdioma, setSelectedIdioma] = useState('')
   const [sortOrder, setSortOrder] = useState<'recent' | 'oldest'>('recent')
+  const [visibleCount, setVisibleCount] = useState(20)
 
-  const [prompts, setPrompts] = useState<any[]>([])
-  const [page, setPage] = useState(1)
-  const [hasMore, setHasMore] = useState(false)
-  const [total, setTotal] = useState(totalCount)
-  const [loading, setLoading] = useState(true)
-  const [loadingMore, setLoadingMore] = useState(false)
+  const filteredSubcategorias = selectedCategoria
+    ? subcategorias.filter(s => s.categoria_id === selectedCategoria)
+    : subcategorias
 
-  const abortRef = useRef<AbortController | null>(null)
+  const filteredSubniveis = selectedSubcategoria
+    ? subniveis.filter(s => s.subcategoria_id === selectedSubcategoria)
+    : subniveis
 
-  const buildUrl = useCallback((p: number) => {
-    const params = new URLSearchParams({ page: String(p) })
-    if (search.trim()) params.set('q', search.trim())
-    if (selectedCategoria) params.set('categoria', selectedCategoria)
-    if (selectedSubcategoria) params.set('subcategoria', selectedSubcategoria)
-    if (selectedSubnivel) params.set('subnivel', selectedSubnivel)
-    if (selectedArea) params.set('area', selectedArea)
-    if (selectedOrigem) params.set('origem', selectedOrigem)
-    if (selectedIdioma) params.set('idioma', selectedIdioma)
-    if (sortOrder === 'oldest') params.set('sort', 'oldest')
-    return `/api/prompts?${params.toString()}`
-  }, [search, selectedCategoria, selectedSubcategoria, selectedSubnivel, selectedArea, selectedOrigem, selectedIdioma, sortOrder])
+  const filtered = useMemo(() => {
+    let result = [...initialPrompts]
 
-  const fetchPage = useCallback(async (p: number, append: boolean) => {
-    if (abortRef.current) abortRef.current.abort()
-    const ctrl = new AbortController()
-    abortRef.current = ctrl
-
-    if (append) setLoadingMore(true)
-    else setLoading(true)
-
-    try {
-      const res = await fetch(buildUrl(p), { signal: ctrl.signal })
-      if (!res.ok) return
-      const json = await res.json()
-      setPrompts(prev => append ? [...prev, ...json.data] : json.data)
-      setTotal(json.total)
-      setHasMore(json.hasMore)
-      setPage(p)
-    } catch (e: any) {
-      if (e.name !== 'AbortError') console.error(e)
-    } finally {
-      setLoading(false)
-      setLoadingMore(false)
+    if (search.trim()) {
+      const q = search.toLowerCase()
+      result = result.filter(p =>
+        p.titulo.toLowerCase().includes(q) ||
+        (p.descricao_curta ?? '').toLowerCase().includes(q) ||
+        p.tags.some(t => t.toLowerCase().includes(q))
+      )
     }
-  }, [buildUrl])
 
-  useEffect(() => {
-    fetchPage(1, false)
-  }, [fetchPage])
+    if (selectedCategoria) result = result.filter(p => p.categoria_id === selectedCategoria)
+    if (selectedSubcategoria) result = result.filter(p => p.subcategoria_id === selectedSubcategoria)
+    if (selectedSubnivel) result = result.filter(p => p.subnivel_id === selectedSubnivel)
+    if (selectedArea) result = result.filter(p => p.area_direito_id === selectedArea)
+    if (selectedOrigem === 'nacional') result = result.filter(p => !(p as any).internacional)
+    if (selectedOrigem === 'internacional') result = result.filter(p => (p as any).internacional)
+    if (selectedIdioma) result = result.filter(p => (p as any).idioma === selectedIdioma)
+
+    result.sort((a, b) => {
+      const da = new Date(a.created_at).getTime()
+      const db = new Date(b.created_at).getTime()
+      return sortOrder === 'recent' ? db - da : da - db
+    })
+
+    return result
+  }, [initialPrompts, search, selectedCategoria, selectedSubcategoria, selectedSubnivel, selectedArea, selectedOrigem, selectedIdioma, sortOrder])
 
   const clearFilters = () => {
     setSearch('')
@@ -98,17 +86,10 @@ export function PromptsClient({ totalCount, categorias, subcategorias, subniveis
     setSelectedArea('')
     setSelectedOrigem('')
     setSelectedIdioma('')
+    setVisibleCount(20)
   }
 
   const hasFilters = search || selectedCategoria || selectedSubcategoria || selectedSubnivel || selectedArea || selectedOrigem || selectedIdioma
-
-  const filteredSubcategorias = selectedCategoria
-    ? subcategorias.filter(s => s.categoria_id === selectedCategoria)
-    : subcategorias
-
-  const filteredSubniveis = selectedSubcategoria
-    ? subniveis.filter(s => s.subcategoria_id === selectedSubcategoria)
-    : subniveis
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
@@ -161,7 +142,7 @@ export function PromptsClient({ totalCount, categorias, subcategorias, subniveis
 
       {activeTab === 'todos' && (
         <>
-          <p className="text-zinc-500 text-sm mb-6">{total} prompt{total !== 1 ? 's' : ''} encontrado{total !== 1 ? 's' : ''}</p>
+          <p className="text-zinc-500 text-sm mb-6">{filtered.length} prompt{filtered.length !== 1 ? 's' : ''} encontrado{filtered.length !== 1 ? 's' : ''}</p>
 
           <div className="flex flex-col sm:flex-row gap-3 mb-6">
             <div className="relative flex-1">
@@ -172,13 +153,13 @@ export function PromptsClient({ totalCount, categorias, subcategorias, subniveis
                 type="text"
                 placeholder="Buscar prompts..."
                 value={search}
-                onChange={e => setSearch(e.target.value)}
+                onChange={e => { setSearch(e.target.value); setVisibleCount(20) }}
                 className="w-full pl-9 pr-4 py-2.5 rounded-lg bg-zinc-900 border border-zinc-800 text-white placeholder-zinc-500 focus:outline-none focus:border-zinc-600 text-sm"
               />
             </div>
             <select
               value={sortOrder}
-              onChange={e => setSortOrder(e.target.value as 'recent' | 'oldest')}
+              onChange={e => { setSortOrder(e.target.value as 'recent' | 'oldest'); setVisibleCount(20) }}
               className="px-3 py-2.5 rounded-lg bg-zinc-900 border border-zinc-800 text-zinc-300 text-sm focus:outline-none focus:border-zinc-600"
             >
               <option value="recent">Mais recentes</option>
@@ -202,7 +183,7 @@ export function PromptsClient({ totalCount, categorias, subcategorias, subniveis
                   <label className="text-xs text-zinc-500 mb-1.5 block">Categoria</label>
                   <select
                     value={selectedCategoria}
-                    onChange={e => { setSelectedCategoria(e.target.value); setSelectedSubcategoria(''); setSelectedSubnivel('') }}
+                    onChange={e => { setSelectedCategoria(e.target.value); setSelectedSubcategoria(''); setSelectedSubnivel(''); setVisibleCount(20) }}
                     className="w-full px-2.5 py-2 rounded-lg bg-zinc-900 border border-zinc-800 text-zinc-300 text-xs focus:outline-none focus:border-zinc-600"
                   >
                     <option value="">Todas</option>
@@ -215,7 +196,7 @@ export function PromptsClient({ totalCount, categorias, subcategorias, subniveis
                     <label className="text-xs text-zinc-500 mb-1.5 block">Subcategoria</label>
                     <select
                       value={selectedSubcategoria}
-                      onChange={e => { setSelectedSubcategoria(e.target.value); setSelectedSubnivel('') }}
+                      onChange={e => { setSelectedSubcategoria(e.target.value); setSelectedSubnivel(''); setVisibleCount(20) }}
                       className="w-full px-2.5 py-2 rounded-lg bg-zinc-900 border border-zinc-800 text-zinc-300 text-xs focus:outline-none focus:border-zinc-600"
                     >
                       <option value="">Todas</option>
@@ -229,7 +210,7 @@ export function PromptsClient({ totalCount, categorias, subcategorias, subniveis
                     <label className="text-xs text-zinc-500 mb-1.5 block">Subnível</label>
                     <select
                       value={selectedSubnivel}
-                      onChange={e => setSelectedSubnivel(e.target.value)}
+                      onChange={e => { setSelectedSubnivel(e.target.value); setVisibleCount(20) }}
                       className="w-full px-2.5 py-2 rounded-lg bg-zinc-900 border border-zinc-800 text-zinc-300 text-xs focus:outline-none focus:border-zinc-600"
                     >
                       <option value="">Todos</option>
@@ -242,7 +223,7 @@ export function PromptsClient({ totalCount, categorias, subcategorias, subniveis
                   <label className="text-xs text-zinc-500 mb-1.5 block">Área do Direito</label>
                   <select
                     value={selectedArea}
-                    onChange={e => setSelectedArea(e.target.value)}
+                    onChange={e => { setSelectedArea(e.target.value); setVisibleCount(20) }}
                     className="w-full px-2.5 py-2 rounded-lg bg-zinc-900 border border-zinc-800 text-zinc-300 text-xs focus:outline-none focus:border-zinc-600"
                   >
                     <option value="">Todas</option>
@@ -254,7 +235,7 @@ export function PromptsClient({ totalCount, categorias, subcategorias, subniveis
                   <label className="text-xs text-zinc-500 mb-1.5 block">Origem</label>
                   <select
                     value={selectedOrigem}
-                    onChange={e => { setSelectedOrigem(e.target.value); setSelectedIdioma('') }}
+                    onChange={e => { setSelectedOrigem(e.target.value); setSelectedIdioma(''); setVisibleCount(20) }}
                     className="w-full px-2.5 py-2 rounded-lg bg-zinc-900 border border-zinc-800 text-zinc-300 text-xs focus:outline-none focus:border-zinc-600"
                   >
                     <option value="">Todos</option>
@@ -268,7 +249,7 @@ export function PromptsClient({ totalCount, categorias, subcategorias, subniveis
                     <label className="text-xs text-zinc-500 mb-1.5 block">Idioma</label>
                     <select
                       value={selectedIdioma}
-                      onChange={e => setSelectedIdioma(e.target.value)}
+                      onChange={e => { setSelectedIdioma(e.target.value); setVisibleCount(20) }}
                       className="w-full px-2.5 py-2 rounded-lg bg-zinc-900 border border-zinc-800 text-zinc-300 text-xs focus:outline-none focus:border-zinc-600"
                     >
                       <option value="">Todos os idiomas</option>
@@ -291,7 +272,7 @@ export function PromptsClient({ totalCount, categorias, subcategorias, subniveis
               <div className="lg:hidden grid grid-cols-2 gap-2 mb-4">
                 <select
                   value={selectedCategoria}
-                  onChange={e => { setSelectedCategoria(e.target.value); setSelectedSubcategoria(''); setSelectedSubnivel('') }}
+                  onChange={e => { setSelectedCategoria(e.target.value); setSelectedSubcategoria(''); setSelectedSubnivel(''); setVisibleCount(20) }}
                   className="px-2.5 py-2 rounded-lg bg-zinc-900 border border-zinc-800 text-zinc-300 text-xs focus:outline-none"
                 >
                   <option value="">Categoria</option>
@@ -299,7 +280,7 @@ export function PromptsClient({ totalCount, categorias, subcategorias, subniveis
                 </select>
                 <select
                   value={selectedArea}
-                  onChange={e => setSelectedArea(e.target.value)}
+                  onChange={e => { setSelectedArea(e.target.value); setVisibleCount(20) }}
                   className="px-2.5 py-2 rounded-lg bg-zinc-900 border border-zinc-800 text-zinc-300 text-xs focus:outline-none"
                 >
                   <option value="">Área</option>
@@ -307,13 +288,7 @@ export function PromptsClient({ totalCount, categorias, subcategorias, subniveis
                 </select>
               </div>
 
-              {loading ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {Array.from({ length: 8 }).map((_, i) => (
-                    <div key={i} className="h-44 rounded-xl border border-zinc-800 bg-zinc-900/50 animate-pulse" />
-                  ))}
-                </div>
-              ) : prompts.length === 0 ? (
+              {filtered.length === 0 ? (
                 <div className="text-center py-20">
                   <p className="text-zinc-500 mb-2">Nenhum prompt encontrado</p>
                   {hasFilters && (
@@ -325,21 +300,20 @@ export function PromptsClient({ totalCount, categorias, subcategorias, subniveis
               ) : (
                 <>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {prompts.map(prompt => (
+                    {filtered.slice(0, visibleCount).map(prompt => (
                       <PromptCard key={prompt.id} prompt={prompt} />
                     ))}
                   </div>
-                  {hasMore && (
+                  {visibleCount < filtered.length && (
                     <div className="mt-8 flex flex-col items-center gap-2">
                       <button
-                        onClick={() => fetchPage(page + 1, true)}
-                        disabled={loadingMore}
-                        className="px-6 py-2.5 rounded-xl border border-zinc-700 text-zinc-300 text-sm hover:border-zinc-500 hover:text-white transition-colors disabled:opacity-50"
+                        onClick={() => setVisibleCount(v => v + 20)}
+                        className="px-6 py-2.5 rounded-xl border border-zinc-700 text-zinc-300 text-sm hover:border-zinc-500 hover:text-white transition-colors"
                       >
-                        {loadingMore ? 'Carregando...' : 'Carregar mais 20 prompts'}
+                        Carregar mais 20 prompts
                       </button>
                       <p className="text-xs text-zinc-600">
-                        Exibindo {prompts.length} de {total}
+                        Exibindo {Math.min(visibleCount, filtered.length)} de {filtered.length}
                       </p>
                     </div>
                   )}
@@ -353,7 +327,7 @@ export function PromptsClient({ totalCount, categorias, subcategorias, subniveis
   )
 }
 
-function PromptCard({ prompt }: { prompt: any }) {
+function PromptCard({ prompt }: { prompt: PromptWithRelations }) {
   return (
     <Link href={`/prompts/${prompt.id}`} className="group block">
       <div className="h-full p-5 rounded-xl border border-zinc-800 bg-zinc-900/50 hover:border-zinc-700 hover:bg-zinc-900 transition-all">
@@ -370,7 +344,7 @@ function PromptCard({ prompt }: { prompt: any }) {
         )}
 
         <div className="flex flex-wrap gap-1.5 mb-3">
-          {prompt.destaque && (
+          {(prompt as any).destaque && (
             <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-yellow-500/10 text-yellow-400 text-xs border border-yellow-500/20 font-medium">
               <svg className="w-2.5 h-2.5" fill="currentColor" viewBox="0 0 24 24">
                 <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
@@ -378,26 +352,26 @@ function PromptCard({ prompt }: { prompt: any }) {
               Destaque
             </span>
           )}
-          {prompt.areas_direito?.nome && (
+          {(prompt as any).areas_direito?.nome && (
             <span className="px-2 py-0.5 rounded-full bg-green-500/10 text-green-400 text-xs border border-green-500/20">
-              {prompt.areas_direito.nome}
+              {(prompt as any).areas_direito.nome}
             </span>
           )}
-          {prompt.subcategorias?.nome && (
+          {(prompt as any).subcategorias?.nome && (
             <span className="px-2 py-0.5 rounded-full bg-zinc-800 text-zinc-400 text-xs">
-              {prompt.subcategorias.nome}
+              {(prompt as any).subcategorias.nome}
             </span>
           )}
-          {prompt.internacional && (
+          {(prompt as any).internacional && (
             <span className="px-2 py-0.5 rounded-full bg-teal-500/10 text-teal-400 text-xs border border-teal-500/20">
-              Intl{prompt.idioma ? ` · ${prompt.idioma.toUpperCase()}` : ''}
+              Intl{(prompt as any).idioma ? ` · ${(prompt as any).idioma.toUpperCase()}` : ''}
             </span>
           )}
         </div>
 
-        {prompt.tags?.length > 0 && (
+        {prompt.tags.length > 0 && (
           <div className="flex flex-wrap gap-1">
-            {prompt.tags.slice(0, 3).map((tag: string) => (
+            {prompt.tags.slice(0, 3).map(tag => (
               <span key={tag} className="text-xs text-zinc-600">#{tag}</span>
             ))}
           </div>
@@ -406,10 +380,10 @@ function PromptCard({ prompt }: { prompt: any }) {
         <div className="mt-3 pt-3 border-t border-zinc-800/50 flex items-center justify-between gap-2">
           <div className="flex items-center gap-1.5 min-w-0">
             <div className="w-4 h-4 rounded-full bg-zinc-700 flex items-center justify-center text-zinc-400 text-xs flex-shrink-0 font-bold">
-              {(prompt.profiles?.full_name ?? prompt.profiles?.email ?? '?')[0]?.toUpperCase()}
+              {((prompt as any).profiles?.full_name ?? (prompt as any).profiles?.email ?? '?')[0]?.toUpperCase()}
             </div>
             <span className="text-xs text-zinc-500 truncate">
-              {prompt.profiles?.full_name ?? prompt.profiles?.email ?? 'Anônimo'}
+              {(prompt as any).profiles?.full_name ?? (prompt as any).profiles?.email ?? 'Anônimo'}
             </span>
           </div>
           <span className="text-xs text-zinc-500 group-hover:text-green-400 transition-colors flex-shrink-0">

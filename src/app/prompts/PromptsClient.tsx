@@ -56,7 +56,6 @@ export function PromptsClient({ initialPrompts, categorias, subcategorias, subni
       const q = search.toLowerCase()
       result = result.filter(p =>
         p.titulo.toLowerCase().includes(q) ||
-        p.texto_completo.toLowerCase().includes(q) ||
         (p.descricao_curta ?? '').toLowerCase().includes(q) ||
         p.tags.some(t => t.toLowerCase().includes(q))
       )

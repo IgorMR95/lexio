@@ -225,7 +225,8 @@ export type Subnivel = Database['public']['Tables']['subniveis']['Row']
 export type AreaDireito = Database['public']['Tables']['areas_direito']['Row']
 export type Prompt = Database['public']['Tables']['prompts']['Row']
 
-export type PromptWithRelations = Prompt & {
+export type PromptWithRelations = Omit<Prompt, 'texto_completo'> & {
+  texto_completo?: string
   categorias_principais: CategoriaPrincipal | null
   subcategorias: Subcategoria | null
   subniveis: Subnivel | null

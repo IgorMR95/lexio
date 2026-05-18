@@ -54,7 +54,6 @@ export function SkillsClient({ initialSkills, areas, topSemana, topAllTime, dest
       result = result.filter(s =>
         s.titulo.toLowerCase().includes(q) ||
         (s.descricao ?? '').toLowerCase().includes(q) ||
-        s.conteudo_md.toLowerCase().includes(q) ||
         s.tags?.some((t: string) => t.toLowerCase().includes(q))
       )
     }

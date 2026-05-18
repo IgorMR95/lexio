@@ -211,7 +211,7 @@ export function RankingClient({
             <div className="p-4 rounded-xl bg-violet-500/5 border border-violet-500/15">
               <p className="text-sm font-semibold text-violet-300 mb-1.5">Modelos de IA</p>
               <p className="text-xs text-zinc-400 leading-relaxed">
-                São os "cérebros" — softwares que processam linguagem e geram texto. Você interage com eles diretamente por um chat. Exemplos: <span className="text-zinc-300">ChatGPT, Claude, Gemini, Copilot</span>. Você escreve uma instrução e eles respondem. O modelo em si não faz nada além de texto — é a base de tudo.
+                São os &ldquo;cérebros&rdquo; — softwares que processam linguagem e geram texto. Você interage com eles diretamente por um chat. Exemplos: <span className="text-zinc-300">ChatGPT, Claude, Gemini, Copilot</span>. Você escreve uma instrução e eles respondem. O modelo em si não faz nada além de texto — é a base de tudo.
               </p>
             </div>
             <div className="p-4 rounded-xl bg-blue-500/5 border border-blue-500/15">

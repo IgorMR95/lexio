@@ -74,6 +74,7 @@ export function Navbar() {
 
   const publicLinks = [
     { href: '/prompts', label: 'Base de Prompts' },
+    { href: '/skills', label: 'Skills MD' },
     { href: '/academy', label: 'Academy' },
     { href: '/faq', label: 'FAQ' },
   ]

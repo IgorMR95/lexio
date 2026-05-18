@@ -144,7 +144,7 @@ export function RankingClient({
         votos_total: votosTotal(f.id, catIdsParaVotos, votosMap),
       }))
       .sort((a, b) => b.votos_total - a.votos_total)
-  }, [ferramentas, grupoAtivo, perfisAtivos, usosAtivos, catIdsParaVotos, votosMap])
+  }, [ferramentas, grupoAtivo, apenasDestaque, perfisAtivos, usosAtivos, catIdsParaVotos, votosMap])
 
   const maxVotos   = rankingAtual[0]?.votos_total ?? 0
   const totalVotos = votosGeralState.reduce((s, v) => s + v.total_votos, 0)

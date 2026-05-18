@@ -4,133 +4,14 @@ import { createClient } from '@/lib/supabase/server'
 export default async function HomePage() {
   const supabase = createClient()
 
-  const [{ count }, { data: destaquesSemana }, { data: areasData }] = await Promise.all([
-    supabase
-      .from('prompts')
-      .select('*', { count: 'exact', head: true })
-      .in('status', ['ativo', 'aprovado']),
-    (supabase as any)
-      .from('destaques_semana')
-      .select('*, areas_direito(nome)')
-      .limit(5),
-    supabase
-      .from('areas_direito')
-      .select('id, nome, slug')
-      .eq('ativo', true)
-      .order('ordem')
-      .limit(12),
+  const [{ count: totalPrompts }, { count: totalFerramentas }, { data: destaquesSemana }, { data: areasData }] = await Promise.all([
+    supabase.from('prompts').select('*', { count: 'exact', head: true }).in('status', ['ativo', 'aprovado']),
+    (supabase as any).from('ferramentas').select('*', { count: 'exact', head: true }).eq('status', 'ativo'),
+    (supabase as any).from('destaques_semana').select('*, areas_direito(nome)').limit(4),
+    supabase.from('areas_direito').select('id, nome, slug').eq('ativo', true).order('ordem').limit(12),
   ])
 
   const areas = areasData ?? []
-
-  const perfis = [
-    {
-      titulo: 'Advogado Privado',
-      desc: 'Petições, contratos, pareceres e estratégias jurídicas para escritórios e advocacia de causa.',
-      icon: (
-        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 6l3 1m0 0l-3 9a5.002 5.002 0 006.001 0M6 7l3 9M6 7l6-2m6 2l3-1m-3 1l-3 9a5.002 5.002 0 006.001 0M18 7l3 9m-3-9l-6-2m0-2v2m0 16V5m0 16H9m3 0h3" />
-        </svg>
-      ),
-      cor: 'from-green-700/20 to-emerald-700/5',
-      badge: 'text-green-400 bg-green-500/10 border-green-500/20',
-    },
-    {
-      titulo: 'Advogado Público',
-      desc: 'Peças de advocacia pública, pareceres administrativos e consultoria jurídica estatal.',
-      icon: (
-        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 14v3m4-3v3m4-3v3M3 21h18M3 10h18M3 7l9-4 9 4M4 10h16v11H4V10z" />
-        </svg>
-      ),
-      cor: 'from-cyan-700/20 to-teal-700/5',
-      badge: 'text-cyan-400 bg-cyan-500/10 border-cyan-500/20',
-    },
-    {
-      titulo: 'Magistrado',
-      desc: 'Sentenças, despachos, acórdãos e atos ordinatórios organizados por esfera e matéria.',
-      icon: (
-        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 3v1m0 16v1m8.66-13l-.87.5M4.21 16.5l-.87.5M20.66 16.5l-.87-.5M4.21 7.5l-.87-.5M21 12h-1M4 12H3m15.364-6.364l-.707.707M6.343 17.657l-.707.707M17.657 17.657l-.707-.707M6.343 6.343l-.707-.707M12 8a4 4 0 100 8 4 4 0 000-8z" />
-        </svg>
-      ),
-      cor: 'from-teal-700/20 to-cyan-700/5',
-      badge: 'text-teal-400 bg-teal-500/10 border-teal-500/20',
-    },
-    {
-      titulo: 'Defensor Público',
-      desc: 'Habeas corpus, recursos, petições de gratuidade e peças em favor de hipossuficientes.',
-      icon: (
-        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-        </svg>
-      ),
-      cor: 'from-green-900/40 to-zinc-900/5',
-      badge: 'text-green-300 bg-green-500/8 border-green-500/15',
-    },
-    {
-      titulo: 'Promotor de Justiça',
-      desc: 'Denúncias, recursos ministeriais, ANPPs e ações civis públicas.',
-      icon: (
-        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z" />
-        </svg>
-      ),
-      cor: 'from-emerald-700/20 to-green-900/5',
-      badge: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20',
-    },
-    {
-      titulo: 'Mestrando e Doutorando',
-      desc: 'Fichamentos, projetos de pesquisa, teses e artigos para periódicos Qualis.',
-      icon: (
-        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 14l9-5-9-5-9 5 9 5zm0 0l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0112 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14z" />
-        </svg>
-      ),
-      cor: 'from-lime-700/20 to-green-900/5',
-      badge: 'text-lime-400 bg-lime-500/10 border-lime-500/20',
-    },
-    {
-      titulo: 'Concurseiro',
-      desc: 'Resumos doutrinários, análise de jurisprudência e simulados para magistratura, MP e OAB.',
-      icon: (
-        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
-        </svg>
-      ),
-      cor: 'from-green-800/30 to-zinc-900/5',
-      badge: 'text-green-400 bg-green-500/10 border-green-500/20',
-    },
-    {
-      titulo: 'Estudante de Direito',
-      desc: 'Auxílio em TCC, moot courts, seminários, fichamentos e compreensão de conceitos jurídicos.',
-      icon: (
-        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
-        </svg>
-      ),
-      cor: 'from-emerald-900/30 to-zinc-900/5',
-      badge: 'text-emerald-300 bg-emerald-500/8 border-emerald-500/15',
-    },
-  ]
-
-  const comoFunciona = [
-    {
-      num: '01',
-      titulo: 'Encontre o prompt certo',
-      desc: 'Filtre por área do direito, tipo de peça, perfil profissional ou use a busca para encontrar exatamente o que precisa.',
-    },
-    {
-      num: '02',
-      titulo: 'Copie e adapte',
-      desc: 'Cada prompt é estruturado para ser colado diretamente em qualquer IA (ChatGPT, Gemini, Claude) e adaptado ao seu caso.',
-    },
-    {
-      num: '03',
-      titulo: 'Contribua com a comunidade',
-      desc: 'Publique seus próprios prompts, receba votos da comunidade jurídica e ganhe destaque na plataforma.',
-    },
-  ]
 
   return (
     <div className="min-h-screen">
@@ -138,38 +19,31 @@ export default async function HomePage() {
       {/* ── Hero ── */}
       <section className="relative overflow-hidden border-b border-zinc-800">
         <div className="absolute inset-0 bg-gradient-to-br from-zinc-950 via-zinc-900 to-zinc-950" />
-        <div className="absolute inset-0 opacity-25"
+        <div className="absolute inset-0 opacity-20"
           style={{ backgroundImage: 'linear-gradient(to right, #18181b 1px, transparent 1px), linear-gradient(to bottom, #18181b 1px, transparent 1px)', backgroundSize: '64px 64px' }} />
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[700px] h-[350px] bg-green-600/10 rounded-full blur-3xl" />
-        <div className="absolute bottom-0 right-0 w-[400px] h-[250px] bg-emerald-600/8 rounded-full blur-3xl" />
 
         <div className="relative max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-24">
           <div className="max-w-3xl">
             <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-green-500/10 border border-green-500/20 text-green-400 text-xs font-medium mb-7">
               <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
-              {count ?? 0} prompts disponíveis gratuitamente
+              A plataforma completa de IA para o direito brasileiro
             </div>
             <h1 className="text-4xl sm:text-6xl font-bold tracking-tight text-white leading-tight mb-6">
-              Prompts jurídicos para{' '}
+              Direito e IA,{' '}
               <span className="bg-gradient-to-r from-green-400 to-emerald-400 bg-clip-text text-transparent">
-                profissionais sérios
+                do começo ao fim
               </span>
             </h1>
             <p className="text-lg text-zinc-400 leading-relaxed mb-10 max-w-2xl">
-              A maior base colaborativa de prompts de IA para o direito brasileiro.
-              Filtros por área, categoria e perfil profissional. Curado pela comunidade.
+              Prompts jurídicos, skills para automação, ranking de ferramentas de IA e
+              conteúdo educacional — tudo em um só lugar, feito para juristas brasileiros.
             </p>
             <div className="flex items-center gap-4 flex-wrap">
-              <Link
-                href="/prompts"
-                className="px-6 py-3 rounded-xl bg-green-600 hover:bg-green-500 text-white font-semibold text-sm transition-colors shadow-lg shadow-green-900/30"
-              >
-                Explorar prompts
+              <Link href="/prompts" className="px-6 py-3 rounded-xl bg-green-600 hover:bg-green-500 text-white font-semibold text-sm transition-colors shadow-lg shadow-green-900/30">
+                Explorar a plataforma
               </Link>
-              <Link
-                href="/signup"
-                className="px-6 py-3 rounded-xl border border-zinc-700 text-zinc-300 text-sm font-medium hover:border-zinc-500 hover:text-white transition-colors"
-              >
+              <Link href="/signup" className="px-6 py-3 rounded-xl border border-zinc-700 text-zinc-300 text-sm font-medium hover:border-zinc-500 hover:text-white transition-colors">
                 Criar conta grátis
               </Link>
             </div>
@@ -178,8 +52,8 @@ export default async function HomePage() {
           {/* Stats */}
           <div className="mt-16 flex items-center gap-10 flex-wrap">
             {[
-              { value: count ?? 0, label: 'prompts publicados' },
-              { value: areas.length, label: 'áreas do direito' },
+              { value: `+${totalPrompts ?? 500}`, label: 'prompts jurídicos' },
+              { value: `${totalFerramentas ?? 50}`, label: 'IAs e ferramentas avaliadas' },
               { value: '100%', label: 'gratuito para usar' },
             ].map((s, i) => (
               <div key={i} className="flex items-center gap-2.5">
@@ -192,11 +66,134 @@ export default async function HomePage() {
         </div>
       </section>
 
+      {/* ── O que é o Midori ── */}
+      <section className="border-b border-zinc-800 bg-zinc-900/20">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
+          <div className="text-center mb-14">
+            <p className="text-xs font-semibold text-green-400 uppercase tracking-wider mb-3">Tudo sobre IA jurídica</p>
+            <h2 className="text-3xl font-bold text-white mb-4">Uma plataforma, quatro pilares</h2>
+            <p className="text-zinc-500 max-w-xl mx-auto text-sm leading-relaxed">
+              O Midori reúne recursos que antes estavam espalhados — prompts prontos, automações avançadas,
+              avaliação independente de ferramentas e formação continuada.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+
+            {/* Base de Prompts */}
+            <Link href="/prompts" className="group relative p-7 rounded-2xl border border-zinc-800 bg-zinc-900/50 hover:border-green-700/40 hover:bg-zinc-900/80 transition-all overflow-hidden">
+              <div className="absolute top-0 right-0 w-40 h-40 bg-green-600/5 rounded-full blur-2xl group-hover:bg-green-600/10 transition-all" />
+              <div className="relative">
+                <div className="w-11 h-11 rounded-xl bg-green-500/10 border border-green-500/20 flex items-center justify-center mb-5">
+                  <svg className="w-5 h-5 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                </div>
+                <div className="flex items-center gap-2 mb-2">
+                  <h3 className="text-lg font-bold text-white">Base de Prompts</h3>
+                  <span className="px-2 py-0.5 rounded-full bg-green-500/10 text-green-400 text-[10px] border border-green-500/20 font-medium">+{totalPrompts ?? 500} prompts</span>
+                </div>
+                <p className="text-sm text-zinc-500 leading-relaxed mb-4">
+                  A maior coleção colaborativa de prompts jurídicos em português. Petições, contratos, pareceres,
+                  recursos e muito mais — organizados por área, categoria e perfil profissional.
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {areas.slice(0, 4).map((a: any) => (
+                    <span key={a.id} className="px-2 py-0.5 rounded-md bg-zinc-800 text-zinc-500 text-xs">{a.nome}</span>
+                  ))}
+                  <span className="px-2 py-0.5 rounded-md bg-zinc-800 text-zinc-600 text-xs">+{Math.max(0, areas.length - 4)} áreas</span>
+                </div>
+                <p className="text-xs text-green-400 mt-5 group-hover:translate-x-1 transition-transform">Explorar prompts →</p>
+              </div>
+            </Link>
+
+            {/* Ranking de IAs */}
+            <Link href="/ranking" className="group relative p-7 rounded-2xl border border-zinc-800 bg-zinc-900/50 hover:border-violet-700/40 hover:bg-zinc-900/80 transition-all overflow-hidden">
+              <div className="absolute top-0 right-0 w-40 h-40 bg-violet-600/5 rounded-full blur-2xl group-hover:bg-violet-600/10 transition-all" />
+              <div className="relative">
+                <div className="w-11 h-11 rounded-xl bg-violet-500/10 border border-violet-500/20 flex items-center justify-center mb-5">
+                  <svg className="w-5 h-5 text-violet-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                  </svg>
+                </div>
+                <div className="flex items-center gap-2 mb-2">
+                  <h3 className="text-lg font-bold text-white">Ranking de IAs Jurídicas</h3>
+                  <span className="px-2 py-0.5 rounded-full bg-violet-500/10 text-violet-400 text-[10px] border border-violet-500/20 font-medium">{totalFerramentas ?? 50} ferramentas</span>
+                </div>
+                <p className="text-sm text-zinc-500 leading-relaxed mb-4">
+                  Avaliação independente de modelos de IA (ChatGPT, Claude, Gemini…) e ferramentas jurídicas
+                  (Turivius, Netlex, Looplex…), votadas por advogados, magistrados e promotores.
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {['Modelos de IA', 'Ferramentas', 'Reviews', 'Destaque editorial'].map(tag => (
+                    <span key={tag} className="px-2 py-0.5 rounded-md bg-zinc-800 text-zinc-500 text-xs">{tag}</span>
+                  ))}
+                </div>
+                <p className="text-xs text-violet-400 mt-5 group-hover:translate-x-1 transition-transform">Ver ranking →</p>
+              </div>
+            </Link>
+
+            {/* Skills MD */}
+            <Link href="/skills" className="group relative p-7 rounded-2xl border border-zinc-800 bg-zinc-900/50 hover:border-blue-700/40 hover:bg-zinc-900/80 transition-all overflow-hidden">
+              <div className="absolute top-0 right-0 w-40 h-40 bg-blue-600/5 rounded-full blur-2xl group-hover:bg-blue-600/10 transition-all" />
+              <div className="relative">
+                <div className="w-11 h-11 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center mb-5">
+                  <svg className="w-5 h-5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
+                  </svg>
+                </div>
+                <div className="flex items-center gap-2 mb-2">
+                  <h3 className="text-lg font-bold text-white">Skills MD</h3>
+                  <span className="px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-400 text-[10px] border border-blue-500/20 font-medium">Automação avançada</span>
+                </div>
+                <p className="text-sm text-zinc-500 leading-relaxed mb-4">
+                  Arquivos de instrução estruturada (Markdown) para configurar agentes de IA com comportamento
+                  especializado em tarefas jurídicas complexas — análise de contratos, due diligence, pesquisa.
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {['Claude Projects', 'Agentes IA', 'Fluxos jurídicos', 'Reutilizável'].map(tag => (
+                    <span key={tag} className="px-2 py-0.5 rounded-md bg-zinc-800 text-zinc-500 text-xs">{tag}</span>
+                  ))}
+                </div>
+                <p className="text-xs text-blue-400 mt-5 group-hover:translate-x-1 transition-transform">Ver skills →</p>
+              </div>
+            </Link>
+
+            {/* Academy */}
+            <Link href="/academy" className="group relative p-7 rounded-2xl border border-zinc-800 bg-zinc-900/50 hover:border-amber-700/40 hover:bg-zinc-900/80 transition-all overflow-hidden">
+              <div className="absolute top-0 right-0 w-40 h-40 bg-amber-600/5 rounded-full blur-2xl group-hover:bg-amber-600/10 transition-all" />
+              <div className="relative">
+                <div className="w-11 h-11 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center mb-5">
+                  <svg className="w-5 h-5 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 14l9-5-9-5-9 5 9 5zm0 0l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0112 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14z" />
+                  </svg>
+                </div>
+                <div className="flex items-center gap-2 mb-2">
+                  <h3 className="text-lg font-bold text-white">Academy</h3>
+                  <span className="px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 text-[10px] border border-amber-500/20 font-medium">Formação continuada</span>
+                </div>
+                <p className="text-sm text-zinc-500 leading-relaxed mb-4">
+                  Conteúdo educacional sobre IA aplicada ao direito — guias práticos, tutoriais e boas práticas
+                  para juristas que querem usar IA com segurança e eficiência no dia a dia.
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {['Guias práticos', 'Tutoriais', 'Boas práticas', 'Ética em IA'].map(tag => (
+                    <span key={tag} className="px-2 py-0.5 rounded-md bg-zinc-800 text-zinc-500 text-xs">{tag}</span>
+                  ))}
+                </div>
+                <p className="text-xs text-amber-400 mt-5 group-hover:translate-x-1 transition-transform">Ir para o Academy →</p>
+              </div>
+            </Link>
+
+          </div>
+        </div>
+      </section>
+
       {/* ── Destaques da Semana ── */}
       {destaquesSemana && destaquesSemana.length > 0 && (
-        <section className="border-b border-zinc-800 bg-zinc-900/20">
+        <section className="border-b border-zinc-800">
           <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
-            <div className="flex items-center justify-between mb-10">
+            <div className="flex items-center justify-between mb-8">
               <div className="flex items-center gap-3">
                 <div className="w-9 h-9 rounded-xl bg-yellow-500/10 border border-yellow-500/20 flex items-center justify-center">
                   <svg className="w-4 h-4 text-yellow-400" fill="currentColor" viewBox="0 0 24 24">
@@ -204,11 +201,11 @@ export default async function HomePage() {
                   </svg>
                 </div>
                 <div>
-                  <h2 className="text-xl font-bold text-white">Destaques da Semana</h2>
-                  <p className="text-xs text-zinc-500 mt-0.5">Prompts mais votados nos últimos 7 dias</p>
+                  <h2 className="text-lg font-bold text-white">Prompts em destaque esta semana</h2>
+                  <p className="text-xs text-zinc-500 mt-0.5">Os mais votados pela comunidade nos últimos 7 dias</p>
                 </div>
               </div>
-              <Link href="/prompts" className="text-xs text-zinc-500 hover:text-green-400 transition-colors flex items-center gap-1">
+              <Link href="/prompts" className="text-xs text-zinc-500 hover:text-green-400 transition-colors hidden sm:flex items-center gap-1">
                 Ver todos
                 <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
@@ -216,52 +213,27 @@ export default async function HomePage() {
               </Link>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               {destaquesSemana.map((prompt: any, i: number) => (
-                <Link
-                  key={prompt.id}
-                  href={`/prompts/${prompt.id}`}
-                  className="group relative flex flex-col p-4 rounded-2xl border border-zinc-800 bg-zinc-900 hover:border-yellow-500/30 hover:bg-zinc-900/80 hover:shadow-xl hover:shadow-black/30 transition-all duration-200"
-                >
-                  <div className={`absolute -top-2 -left-2 w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold border shadow-lg ${
+                <Link key={prompt.id} href={`/prompts/${prompt.id}`}
+                  className="group relative flex flex-col p-4 rounded-2xl border border-zinc-800 bg-zinc-900 hover:border-yellow-500/30 hover:bg-zinc-900/80 transition-all">
+                  <div className={`absolute -top-2 -left-2 w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold border shadow ${
                     i === 0 ? 'bg-yellow-500 border-yellow-400 text-zinc-950' :
                     i === 1 ? 'bg-zinc-400 border-zinc-300 text-zinc-950' :
                     i === 2 ? 'bg-amber-700 border-amber-600 text-white' :
                     'bg-zinc-800 border-zinc-700 text-zinc-400'
-                  }`}>
-                    {i + 1}
-                  </div>
-
-                  <h3 className="text-sm font-semibold text-white group-hover:text-yellow-300 transition-colors line-clamp-2 mb-2 pr-1 mt-1">
-                    {prompt.titulo}
-                  </h3>
-
+                  }`}>{i + 1}</div>
+                  <h3 className="text-sm font-semibold text-white group-hover:text-yellow-300 transition-colors line-clamp-2 mb-2 mt-1">{prompt.titulo}</h3>
                   {prompt.descricao_curta && (
-                    <p className="text-xs text-zinc-500 line-clamp-2 mb-3 leading-relaxed flex-1">
-                      {prompt.descricao_curta}
-                    </p>
+                    <p className="text-xs text-zinc-500 line-clamp-2 mb-3 leading-relaxed flex-1">{prompt.descricao_curta}</p>
                   )}
-
-                  <div className="mt-auto">
+                  <div className="mt-auto flex items-center justify-between">
                     {prompt.areas_direito?.nome && (
-                      <span className="inline-block mb-3 px-2 py-0.5 rounded-full bg-green-500/10 text-green-400 text-xs border border-green-500/20">
-                        {prompt.areas_direito.nome}
-                      </span>
+                      <span className="px-2 py-0.5 rounded-full bg-green-500/10 text-green-400 text-[10px] border border-green-500/20">{prompt.areas_direito.nome}</span>
                     )}
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-1 text-xs text-zinc-500">
-                        <svg className="w-3.5 h-3.5 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 10h4.764a2 2 0 011.789 2.894l-3.5 7A2 2 0 0115.263 21h-4.017c-.163 0-.326-.02-.485-.06L7 20m7-10V5a2 2 0 00-2-2h-.095c-.5 0-.905.405-.905.905 0 .714-.211 1.412-.608 2.006L7 11v9m7-10h-2M7 20H5a2 2 0 01-2-2v-6a2 2 0 012-2h2.5" />
-                        </svg>
-                        <span className="font-medium text-green-400">{prompt.votos_semana ?? 0}</span>
-                      </div>
-                      <span className="text-xs text-zinc-600 group-hover:text-yellow-400 transition-colors flex items-center gap-0.5">
-                        Ver
-                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                        </svg>
-                      </span>
-                    </div>
+                    <span className="text-xs text-zinc-600 group-hover:text-yellow-400 transition-colors ml-auto flex items-center gap-0.5">
+                      Ver <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
+                    </span>
                   </div>
                 </Link>
               ))}
@@ -270,55 +242,30 @@ export default async function HomePage() {
         </section>
       )}
 
-      {/* ── Para cada perfil ── */}
-      <section className="border-b border-zinc-800">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
-          <div className="text-center mb-14">
-            <p className="text-xs font-semibold text-green-400 uppercase tracking-widest mb-3">Plataforma especializada</p>
-            <h2 className="text-3xl font-bold text-white">Para cada jurista</h2>
-            <p className="text-zinc-500 mt-3 max-w-xl mx-auto text-sm leading-relaxed">
-              Prompts organizados por perfil profissional para que você encontre exatamente o que precisa.
-            </p>
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-            {perfis.map(p => (
-              <div
-                key={p.titulo}
-                className={`relative group p-6 rounded-2xl border border-zinc-800 bg-gradient-to-br ${p.cor} hover:border-zinc-600 hover:shadow-xl hover:shadow-black/30 transition-all duration-200 overflow-hidden`}
-              >
-                <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity"
-                  style={{ backgroundImage: 'radial-gradient(circle at 80% 20%, rgba(255,255,255,0.03) 0%, transparent 60%)' }} />
-                <div className={`relative w-11 h-11 rounded-xl flex items-center justify-center border ${p.badge} mb-4`}>
-                  <span className={p.badge.split(' ')[0]}>{p.icon}</span>
-                </div>
-                <h3 className="font-bold text-white mb-2 relative">{p.titulo}</h3>
-                <p className="text-sm text-zinc-500 leading-relaxed relative">{p.desc}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ── Como funciona ── */}
+      {/* ── Para quem é ── */}
       <section className="border-b border-zinc-800 bg-zinc-900/20">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
-          <div className="text-center mb-14">
-            <p className="text-xs font-semibold text-green-400 uppercase tracking-widest mb-3">Simples e direto</p>
-            <h2 className="text-3xl font-bold text-white">Como funciona</h2>
+          <div className="text-center mb-12">
+            <p className="text-xs font-semibold text-green-400 uppercase tracking-wider mb-3">Plataforma especializada</p>
+            <h2 className="text-3xl font-bold text-white mb-3">Feito para cada jurista</h2>
+            <p className="text-zinc-500 max-w-lg mx-auto text-sm">
+              Do estudante ao ministro — todos os perfis do direito brasileiro têm um lugar aqui.
+            </p>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            {comoFunciona.map((item, i) => (
-              <div key={i} className="relative">
-                {i < comoFunciona.length - 1 && (
-                  <div className="hidden md:block absolute top-6 left-[calc(100%-0px)] w-full h-px bg-gradient-to-r from-zinc-700 to-transparent z-0" />
-                )}
-                <div className="relative z-10">
-                  <div className="w-12 h-12 rounded-2xl bg-zinc-900 border border-zinc-700 flex items-center justify-center mb-5">
-                    <span className="text-sm font-bold text-green-400 font-mono">{item.num}</span>
-                  </div>
-                  <h3 className="font-bold text-white mb-2">{item.titulo}</h3>
-                  <p className="text-sm text-zinc-500 leading-relaxed">{item.desc}</p>
-                </div>
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+            {[
+              { titulo: 'Advogado Privado',    cor: 'text-green-400',   bg: 'bg-green-500/8 border-green-500/15',   icon: '⚖️' },
+              { titulo: 'Advogado Público',    cor: 'text-cyan-400',    bg: 'bg-cyan-500/8 border-cyan-500/15',     icon: '🏛️' },
+              { titulo: 'Magistrado',          cor: 'text-teal-400',    bg: 'bg-teal-500/8 border-teal-500/15',     icon: '🔨' },
+              { titulo: 'Defensor Público',    cor: 'text-emerald-400', bg: 'bg-emerald-500/8 border-emerald-500/15', icon: '🛡️' },
+              { titulo: 'Promotor de Justiça', cor: 'text-lime-400',    bg: 'bg-lime-500/8 border-lime-500/15',     icon: '📢' },
+              { titulo: 'Pesquisador / Mestre',cor: 'text-violet-400',  bg: 'bg-violet-500/8 border-violet-500/15', icon: '🎓' },
+              { titulo: 'Concurseiro',         cor: 'text-amber-400',   bg: 'bg-amber-500/8 border-amber-500/15',   icon: '📋' },
+              { titulo: 'Estudante de Direito',cor: 'text-blue-400',    bg: 'bg-blue-500/8 border-blue-500/15',     icon: '📚' },
+            ].map(p => (
+              <div key={p.titulo} className={`flex items-center gap-3 px-4 py-3 rounded-xl border ${p.bg} transition-colors`}>
+                <span className="text-lg shrink-0">{p.icon}</span>
+                <span className={`text-sm font-medium ${p.cor}`}>{p.titulo}</span>
               </div>
             ))}
           </div>
@@ -327,26 +274,23 @@ export default async function HomePage() {
 
       {/* ── Áreas do direito ── */}
       <section className="border-b border-zinc-800">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
-          <div className="flex items-end justify-between mb-10">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+          <div className="flex items-end justify-between mb-8">
             <div>
-              <p className="text-xs font-semibold text-green-400 uppercase tracking-widest mb-2">Cobertura completa</p>
-              <h2 className="text-3xl font-bold text-white">Áreas do direito</h2>
+              <p className="text-xs font-semibold text-green-400 uppercase tracking-wider mb-2">Cobertura completa</p>
+              <h2 className="text-2xl font-bold text-white">Todas as áreas do direito</h2>
             </div>
             <Link href="/prompts" className="text-sm text-zinc-500 hover:text-green-400 transition-colors hidden sm:flex items-center gap-1">
-              Ver todos os prompts
+              Ver base de prompts
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
               </svg>
             </Link>
           </div>
-          <div className="flex flex-wrap gap-3">
+          <div className="flex flex-wrap gap-2.5">
             {areas.map((area: any) => (
-              <Link
-                key={area.id}
-                href={`/prompts?area=${area.slug}`}
-                className="group flex items-center gap-2 px-4 py-2.5 rounded-xl border border-zinc-800 bg-zinc-900/50 text-sm text-zinc-400 hover:text-white hover:border-green-700/50 hover:bg-green-950/30 transition-all"
-              >
+              <Link key={area.id} href={`/prompts?area=${area.slug}`}
+                className="group flex items-center gap-2 px-4 py-2 rounded-xl border border-zinc-800 bg-zinc-900/50 text-sm text-zinc-400 hover:text-white hover:border-green-700/50 hover:bg-green-950/30 transition-all">
                 <span className="w-1.5 h-1.5 rounded-full bg-zinc-700 group-hover:bg-green-500 transition-colors" />
                 {area.nome}
               </Link>
@@ -370,24 +314,18 @@ export default async function HomePage() {
                 Comunidade jurídica
               </div>
               <h2 className="text-3xl font-bold text-white mb-4">
-                Contribua e eleve o padrão jurídico
+                Junte-se a quem está na vanguarda
               </h2>
-              <p className="text-zinc-400 mb-8 max-w-lg mx-auto leading-relaxed">
-                Crie sua conta gratuitamente, publique seus prompts, vote nos melhores
-                e ajude a construir a maior base jurídica de IA em português.
+              <p className="text-zinc-400 mb-8 max-w-lg mx-auto leading-relaxed text-sm">
+                Crie sua conta gratuitamente. Acesse todos os prompts, skills e o ranking de IAs.
+                Contribua com a comunidade e ajude a construir o maior acervo jurídico de IA em português.
               </p>
               <div className="flex items-center gap-4 justify-center flex-wrap">
-                <Link
-                  href="/signup"
-                  className="px-8 py-3 rounded-xl bg-green-600 hover:bg-green-500 text-white font-bold text-sm transition-colors shadow-xl shadow-green-900/30"
-                >
+                <Link href="/signup" className="px-8 py-3 rounded-xl bg-green-600 hover:bg-green-500 text-white font-bold text-sm transition-colors shadow-xl shadow-green-900/30">
                   Começar agora — é grátis
                 </Link>
-                <Link
-                  href="/prompts"
-                  className="px-8 py-3 rounded-xl border border-zinc-700 text-zinc-300 text-sm font-medium hover:border-zinc-500 hover:text-white transition-colors"
-                >
-                  Explorar prompts
+                <Link href="/prompts" className="px-8 py-3 rounded-xl border border-zinc-700 text-zinc-300 text-sm font-medium hover:border-zinc-500 hover:text-white transition-colors">
+                  Explorar sem cadastro
                 </Link>
               </div>
             </div>

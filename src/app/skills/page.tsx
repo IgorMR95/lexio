@@ -37,26 +37,88 @@ export default async function SkillsPage() {
       .limit(20),
   ])
 
-  // Usuários destaque: top autores por número de skills publicadas
-  const autorSkillCount: Record<string, number> = {}
-  ;(skills ?? []).forEach((s: any) => {
-    if (s.autor_id) autorSkillCount[s.autor_id] = (autorSkillCount[s.autor_id] ?? 0) + 1
-  })
-  const topAutorIds = Object.entries(autorSkillCount)
-    .sort(([, a], [, b]) => b - a)
-    .slice(0, 12)
-    .map(([id]) => id)
+  // ── Rankings de usuários (4 subcategorias) ──
 
-  let usuariosDestaque: any[] = []
-  if (topAutorIds.length > 0) {
-    const { data: topProfiles } = await (supabase as any)
+  // Top 5: mais skills aprovadas (all-time)
+  const topAprovadosMap: Record<string, number> = {}
+  ;(skills ?? []).forEach((s: any) => {
+    if (s.autor_id) topAprovadosMap[s.autor_id] = (topAprovadosMap[s.autor_id] ?? 0) + 1
+  })
+  const topAprovadosIds = Object.entries(topAprovadosMap)
+    .sort((a, b) => b[1] - a[1]).slice(0, 5).map(([id]) => id)
+
+  // Top 5: mais skills com destaque
+  const { data: skillsDestaquesRaw } = await (supabase as any)
+    .from('skills')
+    .select('autor_id')
+    .eq('destaque', true)
+    .in('status', ['ativo', 'aprovado'])
+  const topDestaquesSkillMap: Record<string, number> = {}
+  ;(skillsDestaquesRaw ?? []).forEach((s: any) => {
+    if (s.autor_id) topDestaquesSkillMap[s.autor_id] = (topDestaquesSkillMap[s.autor_id] ?? 0) + 1
+  })
+  const topDestaquesIds = Object.entries(topDestaquesSkillMap)
+    .sort((a, b) => b[1] - a[1]).slice(0, 5).map(([id]) => id)
+
+  // Top 5: mais curtidas recebidas (all-time)
+  const { data: skillVotosRaw } = await (supabase as any)
+    .from('skill_votos')
+    .select('skill_id')
+  const votoPorSkill: Record<string, number> = {}
+  ;(skillVotosRaw ?? []).forEach((v: any) => {
+    votoPorSkill[v.skill_id] = (votoPorSkill[v.skill_id] ?? 0) + 1
+  })
+  const votosAutorSkill: Record<string, number> = {}
+  ;(skills ?? []).forEach((s: any) => {
+    if (s.autor_id && votoPorSkill[s.id]) {
+      votosAutorSkill[s.autor_id] = (votosAutorSkill[s.autor_id] ?? 0) + votoPorSkill[s.id]
+    }
+  })
+  const topVotadosIds = Object.entries(votosAutorSkill)
+    .sort((a, b) => b[1] - a[1]).slice(0, 5).map(([id]) => id)
+
+  // Top 5: mais ativos na semana
+  const umaSemanaAtras = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()
+  const { data: skillsSemanaRaw } = await (supabase as any)
+    .from('skills')
+    .select('autor_id')
+    .in('status', ['ativo', 'aprovado'])
+    .gte('created_at', umaSemanaAtras)
+  const semanaSkillMap: Record<string, number> = {}
+  ;(skillsSemanaRaw ?? []).forEach((s: any) => {
+    if (s.autor_id) semanaSkillMap[s.autor_id] = (semanaSkillMap[s.autor_id] ?? 0) + 1
+  })
+  const topPublicadoresIds = Object.entries(semanaSkillMap)
+    .sort((a, b) => b[1] - a[1]).slice(0, 5).map(([id]) => id)
+
+  // Buscar perfis de todos os IDs únicos
+  const allUserIds = Array.from(new Set([
+    ...topAprovadosIds, ...topDestaquesIds, ...topVotadosIds, ...topPublicadoresIds,
+  ]))
+  const userProfileMap: Record<string, any> = {}
+  if (allUserIds.length > 0) {
+    const { data: userProfiles } = await (supabase as any)
       .from('profiles')
-      .select('id, full_name, email, bio, avatar_url')
-      .in('id', topAutorIds)
-    usuariosDestaque = (topProfiles ?? []).map((p: any) => ({
-      ...p,
-      total_skills: autorSkillCount[p.id] ?? 0,
-    })).sort((a: any, b: any) => b.total_skills - a.total_skills)
+      .select('id, full_name, email, avatar_url, instituicao')
+      .in('id', allUserIds)
+    ;(userProfiles ?? []).forEach((p: any) => { userProfileMap[p.id] = p })
+  }
+
+  const buildRanking = (ids: string[], countMap: Record<string, number>) =>
+    ids.map(id => ({
+      id,
+      full_name: userProfileMap[id]?.full_name ?? null,
+      email: userProfileMap[id]?.email ?? null,
+      avatar_url: userProfileMap[id]?.avatar_url ?? null,
+      instituicao: userProfileMap[id]?.instituicao ?? null,
+      total: countMap[id] ?? 0,
+    }))
+
+  const usuariosDestaque = {
+    topAprovados: buildRanking(topAprovadosIds, topAprovadosMap),
+    topDestaques: buildRanking(topDestaquesIds, topDestaquesSkillMap),
+    topVotados: buildRanking(topVotadosIds, votosAutorSkill),
+    topPublicadores: buildRanking(topPublicadoresIds, semanaSkillMap),
   }
 
   // Autores

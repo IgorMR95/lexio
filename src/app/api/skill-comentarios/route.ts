@@ -28,9 +28,9 @@ export async function DELETE(req: Request) {
   const isAdmin = profile.data?.role === 'admin'
 
   const query = (supabase as any).from('skill_comentarios').delete().eq('id', id)
-  if (!isAdmin) query.eq('autor_id', user.id)
+  const finalQuery = isAdmin ? query : query.eq('autor_id', user.id)
 
-  const { error } = await query
+  const { error } = await finalQuery
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
   return NextResponse.json({ ok: true })
 }

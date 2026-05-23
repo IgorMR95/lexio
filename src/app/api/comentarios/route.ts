@@ -53,8 +53,8 @@ export async function DELETE(req: NextRequest) {
   const isAdmin = profile?.role === 'admin'
 
   const query = (supabase as any).from('prompt_comentarios').delete().eq('id', id)
-  if (!isAdmin) query.eq('autor_id', user.id)
+  const finalQuery = isAdmin ? query : query.eq('autor_id', user.id)
 
-  await query
+  await finalQuery
   return NextResponse.json({ ok: true })
 }

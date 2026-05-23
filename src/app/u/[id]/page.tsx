@@ -216,7 +216,7 @@ export default async function PublicProfilePage({ params }: { params: { id: stri
           { label: 'Prompts publicados', count: promptsCount ?? 0, href: `/u/${uid}/prompts`, color: 'text-blue-400' },
           { label: 'Skills publicadas', count: skillsCount ?? 0, href: `/u/${uid}/skills`, color: 'text-green-400' },
           { label: 'Votos recebidos', count: votosRecebidos ?? 0, href: `/u/${uid}/prompts`, color: 'text-pink-400' },
-          { label: 'Usos registrados', count: totalCopias, href: `/u/${uid}/prompts`, color: 'text-violet-400' },
+          { label: 'Vezes copiado', count: totalCopias, href: `/u/${uid}/prompts`, color: 'text-violet-400' },
         ].map(s => (
           <Link key={s.label} href={s.href}
             className="p-4 rounded-xl border border-zinc-800 bg-zinc-900/40 hover:border-zinc-700 hover:bg-zinc-900 transition-all text-center group">

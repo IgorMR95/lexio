@@ -36,31 +36,26 @@ export default async function HomePage() {
     ),
     (supabase as any).from('skills_destaques_semana').select('*, areas_direito(nome)').limit(4),
     (supabase as any)
-      .from('v_ranking_prompt_autores')
-      .select('autor_id, total_prompts, total_destaques')
+      .from('v_ranking_geral')
+      .select('autor_id, total_prompts, total_skills, total_destaques, total_votos')
       .order('total_destaques', { ascending: false })
-      .order('total_prompts', { ascending: false })
+      .order('total_votos', { ascending: false })
       .limit(3),
   ])
 
   const topContribIds = (topContribRaw ?? []).map((a: any) => a.autor_id)
-  const [{ data: topContribProfiles }, { data: topContribVotos }] = await Promise.all([
-    topContribIds.length > 0
-      ? supabase.from('profiles').select('id, full_name, instituicao').in('id', topContribIds)
-      : Promise.resolve({ data: [] as any[], error: null }),
-    topContribIds.length > 0
-      ? (supabase as any).from('v_ranking_prompt_votos').select('autor_id, total_votos').in('autor_id', topContribIds)
-      : Promise.resolve({ data: [] as any[], error: null }),
-  ])
-  type TopContribuidor = { id: string; total_prompts: number; total_destaques: number; total_votos: number; full_name: string; instituicao: string | null }
+  const { data: topContribProfiles } = topContribIds.length > 0
+    ? await supabase.from('profiles').select('id, full_name, instituicao').in('id', topContribIds)
+    : { data: [] as any[] }
+  type TopContribuidor = { id: string; total_prompts: number; total_skills: number; total_destaques: number; total_votos: number; full_name: string; instituicao: string | null }
   const topContribuidores: TopContribuidor[] = (topContribRaw ?? []).map((a: any) => {
     const profile = (topContribProfiles ?? []).find((p: any) => p.id === a.autor_id)
-    const votos = (topContribVotos ?? []).find((v: any) => v.autor_id === a.autor_id)
     return {
       id: a.autor_id as string,
       total_prompts: a.total_prompts as number,
+      total_skills: a.total_skills as number,
       total_destaques: a.total_destaques as number,
-      total_votos: (votos?.total_votos ?? 0) as number,
+      total_votos: a.total_votos as number,
       full_name: (profile?.full_name ?? 'Contribuidor') as string,
       instituicao: (profile?.instituicao ?? null) as string | null,
     }
@@ -437,7 +432,7 @@ export default async function HomePage() {
         </section>
       )}
 
-      {/* ── Referências da comunidade ── */}
+      {/* ── Maiores especialistas em IA Jurídica ── */}
       {topContribuidores.length > 0 && (
         <section className="border-b border-zinc-800 bg-zinc-900/20">
           <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
@@ -445,27 +440,27 @@ export default async function HomePage() {
               <div className="flex items-center gap-3">
                 <div className="w-9 h-9 rounded-xl bg-yellow-500/10 border border-yellow-500/20 flex items-center justify-center">
                   <svg className="w-4 h-4 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
                   </svg>
                 </div>
                 <div>
-                  <h2 className="text-lg font-bold text-white">Referências da comunidade</h2>
-                  <p className="text-xs text-zinc-500 mt-0.5">Juristas que constroem reputação contribuindo com a base</p>
+                  <h2 className="text-lg font-bold text-white">Maiores especialistas em IA Jurídica</h2>
+                  <p className="text-xs text-zinc-500 mt-0.5">Prompts + skills + votos dos pares — ranking geral de contribuição</p>
                 </div>
               </div>
               <Link href="/prompts" className="text-xs text-zinc-500 hover:text-yellow-400 transition-colors hidden sm:flex items-center gap-1">
-                Ver todos os prompts
+                Ver ranking completo
                 <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                 </svg>
               </Link>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              {topContribuidores.map((c, i) => {
+              {topContribuidores.map((c: TopContribuidor) => {
                 const designacao =
                   c.total_destaques > 0
                     ? { label: 'Referência Editorial', color: 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20' }
-                    : c.total_prompts >= 5 && c.total_votos >= 20
+                    : (c.total_prompts + c.total_skills) >= 5 && c.total_votos >= 20
                     ? { label: 'Especialista', color: 'bg-blue-500/10 text-blue-400 border-blue-500/20' }
                     : { label: 'Contribuidor', color: 'bg-green-500/10 text-green-400 border-green-500/20' }
                 return (
@@ -490,7 +485,7 @@ export default async function HomePage() {
                         <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                         </svg>
-                        {c.total_prompts} prompts
+                        {c.total_prompts + c.total_skills} contribuições
                       </span>
                       <span className="flex items-center gap-1">
                         <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -504,12 +499,9 @@ export default async function HomePage() {
               })}
             </div>
             <div className="mt-6 text-center">
-              <p className="text-xs text-zinc-600 mb-3">Publique seus prompts e torne-se referência em IA jurídica perante seus pares</p>
-              <Link href="/signup" className="inline-flex items-center gap-2 px-5 py-2 rounded-xl bg-zinc-800 border border-zinc-700 text-zinc-300 text-xs font-medium hover:border-yellow-500/30 hover:text-yellow-300 transition-all">
-                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                </svg>
-                Publicar meu primeiro prompt
+              <p className="text-xs text-zinc-600 mb-3">Publique prompts e skills para construir sua reputação em IA jurídica</p>
+              <Link href="/prompts" className="inline-flex items-center gap-2 px-5 py-2 rounded-xl bg-zinc-800 border border-zinc-700 text-zinc-300 text-xs font-medium hover:border-yellow-500/30 hover:text-yellow-300 transition-all">
+                Ver ranking completo de especialistas →
               </Link>
             </div>
           </div>

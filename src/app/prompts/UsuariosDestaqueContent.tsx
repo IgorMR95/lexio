@@ -12,9 +12,10 @@ interface UsuarioRanking {
 }
 
 interface Props {
-  topGeral: UsuarioRanking[]
-  topPrompts: UsuarioRanking[]
-  topSkills: UsuarioRanking[]
+  topAprovados: UsuarioRanking[]
+  topDestaques: UsuarioRanking[]
+  topVotados: UsuarioRanking[]
+  topPublicadores: UsuarioRanking[]
 }
 
 function Avatar({ u }: { u: UsuarioRanking }) {
@@ -104,8 +105,8 @@ function RankingCard({
   )
 }
 
-export function UsuariosDestaqueContent({ topGeral, topPrompts, topSkills }: Props) {
-  const vazio = topGeral.length === 0 && topPrompts.length === 0 && topSkills.length === 0
+export function UsuariosDestaqueContent({ topAprovados, topDestaques, topVotados, topPublicadores }: Props) {
+  const vazio = topAprovados.length === 0 && topDestaques.length === 0 && topVotados.length === 0 && topPublicadores.length === 0
 
   if (vazio) {
     return (
@@ -118,24 +119,43 @@ export function UsuariosDestaqueContent({ topGeral, topPrompts, topSkills }: Pro
 
   return (
     <div className="space-y-8">
-      <div className="flex items-center gap-3 pb-2 border-b border-zinc-800">
-        <div className="w-9 h-9 rounded-xl bg-yellow-500/10 border border-yellow-500/20 flex items-center justify-center">
-          <svg className="w-4 h-4 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />
+      <div className="flex items-center justify-between pb-2 border-b border-zinc-800">
+        <div className="flex items-center gap-3">
+          <div className="w-9 h-9 rounded-xl bg-green-500/10 border border-green-500/20 flex items-center justify-center">
+            <svg className="w-4 h-4 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+          </div>
+          <div>
+            <h2 className="text-lg font-bold text-white">Especialistas em Prompts</h2>
+            <p className="text-xs text-zinc-500">Rankings de contribuição — prompts aprovados, votos e selos</p>
+          </div>
+        </div>
+        <Link href="/especialistas" className="text-xs text-zinc-500 hover:text-yellow-400 transition-colors flex items-center gap-1">
+          Ver ranking geral
+          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
           </svg>
-        </div>
-        <div>
-          <h2 className="text-lg font-bold text-white">Especialistas em IA Jurídica</h2>
-          <p className="text-xs text-zinc-500">Rankings por contribuição — prompts, skills e votos recebidos dos pares</p>
-        </div>
+        </Link>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
         <RankingCard
-          titulo="Maiores especialistas em IA Jurídica"
-          descricao="Soma de prompts + skills publicados, ponderada por votos recebidos"
-          usuarios={topGeral}
-          unidade="votos totais"
+          titulo="Mais prompts aprovados"
+          descricao="Usuários com maior número de prompts jurídicos publicados e aprovados"
+          usuarios={topAprovados}
+          unidade="prompts"
+          accentClass="text-green-400 bg-green-500/10 border-green-500/20"
+          iconPath={
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+          }
+        />
+
+        <RankingCard
+          titulo="Mais selos de destaque"
+          descricao="Usuários com mais prompts marcados como destaque pelos curadores"
+          usuarios={topDestaques}
+          unidade="destaques"
           accentClass="text-yellow-400 bg-yellow-500/10 border-yellow-500/20"
           iconPath={
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
@@ -143,24 +163,24 @@ export function UsuariosDestaqueContent({ topGeral, topPrompts, topSkills }: Pro
         />
 
         <RankingCard
-          titulo="Maiores especialistas em Prompts"
-          descricao="Usuários com maior número de prompts jurídicos publicados e aprovados"
-          usuarios={topPrompts}
-          unidade="prompts"
-          accentClass="text-green-400 bg-green-500/10 border-green-500/20"
+          titulo="Mais curtidas recebidas"
+          descricao="Usuários cujos prompts acumularam mais curtidas da comunidade"
+          usuarios={topVotados}
+          unidade="curtidas"
+          accentClass="text-teal-400 bg-teal-500/10 border-teal-500/20"
           iconPath={
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 10h4.764a2 2 0 011.789 2.894l-3.5 7A2 2 0 0115.263 21h-4.017c-.163 0-.326-.02-.485-.06L7 20m7-10V5a2 2 0 00-2-2h-.095c-.5 0-.905.405-.905.905 0 .714-.211 1.412-.608 2.006L7 11v9m7-10h-2M7 20H5a2 2 0 01-2-2v-6a2 2 0 012-2h2.5" />
           }
         />
 
         <RankingCard
-          titulo="Maiores especialistas em Skills MD"
-          descricao="Usuários com maior número de skills de automação jurídica publicadas"
-          usuarios={topSkills}
-          unidade="skills"
-          accentClass="text-blue-400 bg-blue-500/10 border-blue-500/20"
+          titulo="Mais ativos na semana"
+          descricao="Usuários que mais publicaram prompts nos últimos 7 dias"
+          usuarios={topPublicadores}
+          unidade="publicados"
+          accentClass="text-emerald-400 bg-emerald-500/10 border-emerald-500/20"
           iconPath={
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
           }
         />
       </div>

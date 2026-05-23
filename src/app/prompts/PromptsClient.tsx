@@ -13,9 +13,10 @@ interface MelhoresData {
 }
 
 interface UsuariosDestaqueData {
-  topGeral: any[]
-  topPrompts: any[]
-  topSkills: any[]
+  topAprovados: any[]
+  topDestaques: any[]
+  topVotados: any[]
+  topPublicadores: any[]
 }
 
 interface Props {
@@ -132,9 +133,10 @@ export function PromptsClient({ initialPrompts, categorias, subcategorias, subni
 
       {activeTab === 'usuarios' && (
         <UsuariosDestaqueContent
-          topGeral={usuariosDestaque.topGeral}
-          topPrompts={usuariosDestaque.topPrompts}
-          topSkills={usuariosDestaque.topSkills}
+          topAprovados={usuariosDestaque.topAprovados}
+          topDestaques={usuariosDestaque.topDestaques}
+          topVotados={usuariosDestaque.topVotados}
+          topPublicadores={usuariosDestaque.topPublicadores}
         />
       )}
 

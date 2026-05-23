@@ -44,30 +44,33 @@ export default async function PromptsPage() {
       .limit(20),
   ])
 
-  // Batch 2 — rankings via views SQL
+  // Batch 2 — rankings via views SQL (específicos de prompts)
   const [
-    { data: rankingGeral },
-    { data: rankingPrompts },
-    { data: rankingSkills },
+    { data: rankingAprovados },
+    { data: rankingDestaques },
+    { data: rankingVotos },
+    { data: rankingSemana },
     { data: topAllTimeData },
   ] = await Promise.all([
     (supabase as any)
-      .from('v_ranking_geral')
-      .select('autor_id, total_prompts, total_skills, total_destaques, total_votos')
+      .from('v_ranking_prompt_autores')
+      .select('autor_id, total_prompts')
+      .order('total_prompts', { ascending: false })
+      .limit(5),
+    (supabase as any)
+      .from('v_ranking_prompt_autores')
+      .select('autor_id, total_destaques')
       .order('total_destaques', { ascending: false })
+      .limit(5),
+    (supabase as any)
+      .from('v_ranking_prompt_votos')
+      .select('autor_id, total_votos')
       .order('total_votos', { ascending: false })
       .limit(5),
     (supabase as any)
       .from('v_ranking_prompt_autores')
-      .select('autor_id, total_prompts, total_destaques')
-      .order('total_destaques', { ascending: false })
-      .order('total_prompts', { ascending: false })
-      .limit(5),
-    (supabase as any)
-      .from('v_ranking_skill_autores')
-      .select('autor_id, total_skills, total_destaques')
-      .order('total_destaques', { ascending: false })
-      .order('total_skills', { ascending: false })
+      .select('autor_id, prompts_semana')
+      .order('prompts_semana', { ascending: false })
       .limit(5),
     topAllTimeRaw && topAllTimeRaw.length > 0
       ? (supabase as any)
@@ -90,9 +93,10 @@ export default async function PromptsPage() {
   // Perfis dos autores
   const promptAutorIds = Array.from(new Set((prompts ?? []).map((p: any) => p.autor_id).filter(Boolean)))
   const rankingAutorIds = Array.from(new Set([
-    ...(rankingGeral ?? []).map((r: any) => r.autor_id),
-    ...(rankingPrompts ?? []).map((r: any) => r.autor_id),
-    ...(rankingSkills ?? []).map((r: any) => r.autor_id),
+    ...(rankingAprovados ?? []).map((r: any) => r.autor_id),
+    ...(rankingDestaques ?? []).map((r: any) => r.autor_id),
+    ...(rankingVotos ?? []).map((r: any) => r.autor_id),
+    ...(rankingSemana ?? []).map((r: any) => r.autor_id),
   ]))
   const allAutorIds = Array.from(new Set([...promptAutorIds, ...rankingAutorIds]))
 
@@ -121,9 +125,10 @@ export default async function PromptsPage() {
     }))
 
   const usuariosDestaque = {
-    topGeral: buildRanking(rankingGeral ?? [], 'total_votos'),
-    topPrompts: buildRanking(rankingPrompts ?? [], 'total_prompts'),
-    topSkills: buildRanking(rankingSkills ?? [], 'total_skills'),
+    topAprovados: buildRanking(rankingAprovados ?? [], 'total_prompts'),
+    topDestaques: buildRanking(rankingDestaques ?? [], 'total_destaques'),
+    topVotados: buildRanking(rankingVotos ?? [], 'total_votos'),
+    topPublicadores: buildRanking(rankingSemana ?? [], 'prompts_semana'),
   }
 
   return (

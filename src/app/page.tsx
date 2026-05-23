@@ -448,7 +448,7 @@ export default async function HomePage() {
                   <p className="text-xs text-zinc-500 mt-0.5">Prompts + skills + votos dos pares — ranking geral de contribuição</p>
                 </div>
               </div>
-              <Link href="/prompts" className="text-xs text-zinc-500 hover:text-yellow-400 transition-colors hidden sm:flex items-center gap-1">
+              <Link href="/especialistas" className="text-xs text-zinc-500 hover:text-yellow-400 transition-colors hidden sm:flex items-center gap-1">
                 Ver ranking completo
                 <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
@@ -500,7 +500,7 @@ export default async function HomePage() {
             </div>
             <div className="mt-6 text-center">
               <p className="text-xs text-zinc-600 mb-3">Publique prompts e skills para construir sua reputação em IA jurídica</p>
-              <Link href="/prompts" className="inline-flex items-center gap-2 px-5 py-2 rounded-xl bg-zinc-800 border border-zinc-700 text-zinc-300 text-xs font-medium hover:border-yellow-500/30 hover:text-yellow-300 transition-all">
+              <Link href="/especialistas" className="inline-flex items-center gap-2 px-5 py-2 rounded-xl bg-zinc-800 border border-zinc-700 text-zinc-300 text-xs font-medium hover:border-yellow-500/30 hover:text-yellow-300 transition-all">
                 Ver ranking completo de especialistas →
               </Link>
             </div>

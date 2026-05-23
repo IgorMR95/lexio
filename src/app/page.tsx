@@ -52,7 +52,8 @@ export default async function HomePage() {
       ? (supabase as any).from('v_ranking_prompt_votos').select('autor_id, total_votos').in('autor_id', topContribIds)
       : Promise.resolve({ data: [] as any[], error: null }),
   ])
-  const topContribuidores = (topContribRaw ?? []).map((a: any) => {
+  type TopContribuidor = { id: string; total_prompts: number; total_destaques: number; total_votos: number; full_name: string; instituicao: string | null }
+  const topContribuidores: TopContribuidor[] = (topContribRaw ?? []).map((a: any) => {
     const profile = (topContribProfiles ?? []).find((p: any) => p.id === a.autor_id)
     const votos = (topContribVotos ?? []).find((v: any) => v.autor_id === a.autor_id)
     return {

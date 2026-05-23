@@ -8,6 +8,7 @@ export async function POST(req: Request) {
 
   const { skill_id, conteudo } = await req.json()
   if (!skill_id || !conteudo?.trim()) return NextResponse.json({ error: 'Dados inválidos' }, { status: 400 })
+  if (conteudo.trim().length > 2000) return NextResponse.json({ error: 'Comentário muito longo' }, { status: 400 })
 
   const { error } = await (supabase as any)
     .from('skill_comentarios')
@@ -23,6 +24,7 @@ export async function DELETE(req: Request) {
   if (!user) return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
 
   const { id } = await req.json()
+  if (!id) return NextResponse.json({ error: 'id obrigatório' }, { status: 400 })
 
   const profile = await supabase.from('profiles').select('role').eq('id', user.id).single()
   const isAdmin = profile.data?.role === 'admin'

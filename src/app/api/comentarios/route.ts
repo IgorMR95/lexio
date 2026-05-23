@@ -47,6 +47,7 @@ export async function DELETE(req: NextRequest) {
   if (!user) return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
 
   const { id } = await req.json()
+  if (!id) return NextResponse.json({ error: 'id obrigatório' }, { status: 400 })
 
   // Só o autor ou admin pode deletar
   const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single()

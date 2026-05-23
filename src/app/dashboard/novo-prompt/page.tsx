@@ -22,9 +22,9 @@ export default async function NovoPromptPage() {
   return (
     <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
       <div className="mb-8">
-        <h1 className="text-2xl font-bold text-white">Novo Prompt</h1>
+        <h1 className="text-2xl font-bold text-white">Publicar Prompt</h1>
         <p className="text-zinc-500 text-sm mt-1">
-          {isAdmin ? 'Prompt será publicado diretamente como ativo' : 'Compartilhe um prompt jurídico com a comunidade'}
+          {isAdmin ? 'Prompt será publicado diretamente como ativo' : 'Publique seu prompt e torne-se referência na sua área'}
         </p>
       </div>
       <NovoPromptForm

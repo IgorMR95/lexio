@@ -223,9 +223,9 @@ export function NovoPromptForm({ categorias, subcategorias, subniveis, areas, us
           disabled={loading}
           className="px-6 py-2.5 rounded-lg bg-white text-zinc-950 font-semibold text-sm hover:bg-zinc-100 transition-colors disabled:opacity-50"
         >
-          {loading ? 'Salvando...' : 'Enviar prompt'}
+          {loading ? 'Publicando...' : 'Publicar'}
         </button>
-        {!isAdmin && <p className="text-xs text-zinc-600">Será revisado antes de ser publicado</p>}
+        {!isAdmin && <p className="text-xs text-zinc-600">Sua submissão será avaliada pela curadoria editorial do Midori</p>}
       </div>
     </form>
   )

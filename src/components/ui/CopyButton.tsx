@@ -2,13 +2,16 @@
 
 import { useState } from 'react'
 
-export function CopyButton({ text }: { text: string }) {
+export function CopyButton({ text, promptId }: { text: string; promptId?: string }) {
   const [copied, setCopied] = useState(false)
 
   const handleCopy = async () => {
     await navigator.clipboard.writeText(text)
     setCopied(true)
     setTimeout(() => setCopied(false), 2000)
+    if (promptId) {
+      fetch(`/api/prompts/${promptId}/copy`, { method: 'POST' }).catch(() => {})
+    }
   }
 
   return (

@@ -4,15 +4,23 @@ import { useState } from 'react'
 
 interface UsePromptButtonsProps {
   text: string
+  promptId?: string
 }
 
-export function UsePromptButtons({ text }: UsePromptButtonsProps) {
+export function UsePromptButtons({ text, promptId }: UsePromptButtonsProps) {
   const [copied, setCopied] = useState(false)
+
+  const trackCopy = () => {
+    if (promptId) {
+      fetch(`/api/prompts/${promptId}/copy`, { method: 'POST' }).catch(() => {})
+    }
+  }
 
   const handleCopy = async () => {
     await navigator.clipboard.writeText(text)
     setCopied(true)
     setTimeout(() => setCopied(false), 2000)
+    trackCopy()
   }
 
   const claudeUrl = `https://claude.ai/new`
@@ -21,11 +29,13 @@ export function UsePromptButtons({ text }: UsePromptButtonsProps) {
   const handleOpenClaude = async () => {
     await navigator.clipboard.writeText(text)
     window.open(claudeUrl, '_blank', 'noopener,noreferrer')
+    trackCopy()
   }
 
   const handleOpenChatGPT = async () => {
     await navigator.clipboard.writeText(text)
     window.open(chatgptUrl, '_blank', 'noopener,noreferrer')
+    trackCopy()
   }
 
   return (

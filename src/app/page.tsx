@@ -16,6 +16,7 @@ export default async function HomePage() {
     { data: areasData },
     { data: ferrsDestaqueSemana },
     { data: skillsDestaqueSemana },
+    { data: topContribRaw },
   ] = await Promise.all([
     supabase.from('prompts').select('*', { count: 'exact', head: true }).in('status', ['ativo', 'aprovado']),
     (supabase as any).from('ferramentas').select('*', { count: 'exact', head: true }).eq('status', 'ativo'),
@@ -34,7 +35,35 @@ export default async function HomePage() {
         : r
     ),
     (supabase as any).from('skills_destaques_semana').select('*, areas_direito(nome)').limit(4),
+    (supabase as any)
+      .from('v_ranking_prompt_autores')
+      .select('autor_id, total_prompts, total_destaques')
+      .order('total_destaques', { ascending: false })
+      .order('total_prompts', { ascending: false })
+      .limit(3),
   ])
+
+  const topContribIds = (topContribRaw ?? []).map((a: any) => a.autor_id)
+  const [{ data: topContribProfiles }, { data: topContribVotos }] = await Promise.all([
+    topContribIds.length > 0
+      ? supabase.from('profiles').select('id, full_name, instituicao').in('id', topContribIds)
+      : Promise.resolve({ data: [] as any[], error: null }),
+    topContribIds.length > 0
+      ? (supabase as any).from('v_ranking_prompt_votos').select('autor_id, total_votos').in('autor_id', topContribIds)
+      : Promise.resolve({ data: [] as any[], error: null }),
+  ])
+  const topContribuidores = (topContribRaw ?? []).map((a: any) => {
+    const profile = (topContribProfiles ?? []).find((p: any) => p.id === a.autor_id)
+    const votos = (topContribVotos ?? []).find((v: any) => v.autor_id === a.autor_id)
+    return {
+      id: a.autor_id as string,
+      total_prompts: a.total_prompts as number,
+      total_destaques: a.total_destaques as number,
+      total_votos: (votos?.total_votos ?? 0) as number,
+      full_name: (profile?.full_name ?? 'Contribuidor') as string,
+      instituicao: (profile?.instituicao ?? null) as string | null,
+    }
+  })
 
   const areas = areasData ?? []
 
@@ -402,6 +431,85 @@ export default async function HomePage() {
                   </div>
                 </Link>
               ))}
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* ── Referências da comunidade ── */}
+      {topContribuidores.length > 0 && (
+        <section className="border-b border-zinc-800 bg-zinc-900/20">
+          <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+            <div className="flex items-center justify-between mb-8">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl bg-yellow-500/10 border border-yellow-500/20 flex items-center justify-center">
+                  <svg className="w-4 h-4 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />
+                  </svg>
+                </div>
+                <div>
+                  <h2 className="text-lg font-bold text-white">Referências da comunidade</h2>
+                  <p className="text-xs text-zinc-500 mt-0.5">Juristas que constroem reputação contribuindo com a base</p>
+                </div>
+              </div>
+              <Link href="/prompts" className="text-xs text-zinc-500 hover:text-yellow-400 transition-colors hidden sm:flex items-center gap-1">
+                Ver todos os prompts
+                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                </svg>
+              </Link>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              {topContribuidores.map((c, i) => {
+                const designacao =
+                  c.total_destaques > 0
+                    ? { label: 'Referência Editorial', color: 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20' }
+                    : c.total_prompts >= 5 && c.total_votos >= 20
+                    ? { label: 'Especialista', color: 'bg-blue-500/10 text-blue-400 border-blue-500/20' }
+                    : { label: 'Contribuidor', color: 'bg-green-500/10 text-green-400 border-green-500/20' }
+                return (
+                  <Link key={c.id} href={`/u/${c.id}`}
+                    className="group flex flex-col gap-3 p-5 rounded-2xl border border-zinc-800 bg-zinc-900/50 hover:border-yellow-700/30 hover:bg-zinc-900/80 transition-all">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="w-10 h-10 rounded-full bg-gradient-to-br from-zinc-700 to-zinc-800 border border-zinc-700 flex items-center justify-center shrink-0">
+                        <span className="text-sm font-bold text-zinc-300">{c.full_name[0]?.toUpperCase()}</span>
+                      </div>
+                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-medium border ${designacao.color}`}>
+                        {designacao.label}
+                      </span>
+                    </div>
+                    <div>
+                      <p className="text-sm font-semibold text-white group-hover:text-yellow-300 transition-colors">{c.full_name}</p>
+                      {c.instituicao && (
+                        <p className="text-xs text-zinc-500 mt-0.5 line-clamp-1">{c.instituicao}</p>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-3 pt-2 border-t border-zinc-800/60 text-xs text-zinc-500">
+                      <span className="flex items-center gap-1">
+                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                        </svg>
+                        {c.total_prompts} prompts
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
+                        </svg>
+                        {c.total_votos} votos
+                      </span>
+                    </div>
+                  </Link>
+                )
+              })}
+            </div>
+            <div className="mt-6 text-center">
+              <p className="text-xs text-zinc-600 mb-3">Publique seus prompts e torne-se referência em IA jurídica perante seus pares</p>
+              <Link href="/signup" className="inline-flex items-center gap-2 px-5 py-2 rounded-xl bg-zinc-800 border border-zinc-700 text-zinc-300 text-xs font-medium hover:border-yellow-500/30 hover:text-yellow-300 transition-all">
+                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                </svg>
+                Publicar meu primeiro prompt
+              </Link>
             </div>
           </div>
         </section>

@@ -34,9 +34,30 @@ export default async function PromptPage({ params }: { params: { id: string } })
   const isPending = (prompt as any).status === 'pendente' || (prompt as any).status === 'inativo'
 
   const autorId = (prompt as any).autor_id
-  const autorProfile = autorId
-    ? (await supabase.from('profiles').select('full_name, email, bio, instituicao').eq('id', autorId).single()).data
-    : null
+
+  const [
+    autorProfileResult,
+    autorPromptsResult,
+    autorVotosResult,
+  ] = await Promise.all([
+    autorId
+      ? supabase.from('profiles').select('full_name, email, bio, instituicao').eq('id', autorId).single()
+      : Promise.resolve({ data: null }),
+    autorId
+      ? supabase.from('prompts').select('id', { count: 'exact', head: true }).eq('autor_id', autorId).in('status', ['ativo', 'aprovado'])
+      : Promise.resolve({ count: 0 }),
+    autorId
+      ? (async () => {
+          const { data: promptIds } = await supabase.from('prompts').select('id').eq('autor_id', autorId).in('status', ['ativo', 'aprovado'])
+          if (!promptIds?.length) return { count: 0 }
+          return (supabase as any).from('prompt_votos').select('id', { count: 'exact', head: true }).in('prompt_id', promptIds.map((p: any) => p.id))
+        })()
+      : Promise.resolve({ count: 0 }),
+  ])
+
+  const autorProfile = autorProfileResult.data
+  const autorPromptsCount: number = autorPromptsResult.count ?? 0
+  const autorVotosCount: number = autorVotosResult.count ?? 0
 
   // Contagem de votos
   const { data: votosData } = await (supabase as any)
@@ -135,7 +156,7 @@ export default async function PromptPage({ params }: { params: { id: string } })
 
           <div className="relative">
             <div className="absolute top-3 right-3 z-10">
-              <CopyButton text={(prompt as any).texto_completo} />
+              <CopyButton text={(prompt as any).texto_completo} promptId={id} />
             </div>
             <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-5 pr-24">
               <pre className="text-sm text-zinc-300 whitespace-pre-wrap leading-relaxed font-sans">
@@ -166,7 +187,7 @@ export default async function PromptPage({ params }: { params: { id: string } })
           {/* Botões de uso — card principal */}
           <div className="p-4 rounded-xl border border-zinc-800 bg-zinc-900/50">
             <h3 className="text-xs font-semibold text-zinc-400 uppercase tracking-wider mb-3">Usar este prompt</h3>
-            <UsePromptButtons text={(prompt as any).texto_completo} />
+            <UsePromptButtons text={(prompt as any).texto_completo} promptId={id} />
           </div>
 
           {/* Curadoria */}
@@ -264,36 +285,56 @@ export default async function PromptPage({ params }: { params: { id: string } })
             </dl>
           </div>
 
-          {autorProfile && (
-            <div className="p-4 rounded-xl border border-zinc-800 bg-zinc-900/50">
-              <h3 className="text-xs font-semibold text-zinc-400 uppercase tracking-wider mb-3">Autor</h3>
-              <Link href={`/u/${autorId}`} className="flex items-start gap-3 group">
-                <div className="w-9 h-9 rounded-full bg-zinc-800 border border-zinc-700 flex items-center justify-center font-bold text-white text-sm flex-shrink-0 group-hover:border-zinc-500 transition-colors">
-                  {(autorProfile.full_name ?? autorProfile.email ?? '?')[0]?.toUpperCase()}
-                </div>
-                <div className="min-w-0">
-                  <p className="text-sm text-white font-medium group-hover:text-green-300 transition-colors">
-                    {autorProfile.full_name ?? autorProfile.email}
-                  </p>
-                  {autorProfile.instituicao && (
-                    <p className="text-xs text-zinc-500 mt-0.5">{autorProfile.instituicao}</p>
-                  )}
-                  {autorProfile.bio && (
-                    <p className="text-xs text-zinc-600 mt-1 line-clamp-2">{autorProfile.bio}</p>
-                  )}
-                  <p className="text-xs text-zinc-600 mt-1 group-hover:text-green-400 transition-colors">Ver perfil →</p>
-                </div>
-              </Link>
-            </div>
-          )}
+          {autorProfile && (() => {
+            const designacao =
+              isDestaque
+                ? { label: 'Referência Editorial', color: 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20' }
+                : autorPromptsCount >= 5 && autorVotosCount >= 20
+                ? { label: 'Especialista', color: 'bg-blue-500/10 text-blue-400 border-blue-500/20' }
+                : autorPromptsCount >= 1
+                ? { label: 'Contribuidor', color: 'bg-green-500/10 text-green-400 border-green-500/20' }
+                : null
+            return (
+              <div className="p-4 rounded-xl border border-zinc-800 bg-zinc-900/50">
+                <h3 className="text-xs font-semibold text-zinc-400 uppercase tracking-wider mb-3">Autor</h3>
+                <Link href={`/u/${autorId}`} className="flex items-start gap-3 group">
+                  <div className="w-9 h-9 rounded-full bg-zinc-800 border border-zinc-700 flex items-center justify-center font-bold text-white text-sm flex-shrink-0 group-hover:border-zinc-500 transition-colors">
+                    {(autorProfile.full_name ?? autorProfile.email ?? '?')[0]?.toUpperCase()}
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-sm text-white font-medium group-hover:text-green-300 transition-colors">
+                      {autorProfile.full_name ?? autorProfile.email}
+                    </p>
+                    {autorProfile.instituicao && (
+                      <p className="text-xs text-zinc-500 mt-0.5">{autorProfile.instituicao}</p>
+                    )}
+                    {designacao && (
+                      <span className={`inline-block mt-1.5 px-2 py-0.5 rounded-full text-[10px] font-medium border ${designacao.color}`}>
+                        {designacao.label}
+                      </span>
+                    )}
+                    {(autorPromptsCount > 0 || autorVotosCount > 0) && (
+                      <p className="text-xs text-zinc-600 mt-1.5">
+                        {autorPromptsCount > 0 && <span>{autorPromptsCount} prompt{autorPromptsCount !== 1 ? 's' : ''} publicado{autorPromptsCount !== 1 ? 's' : ''}</span>}
+                        {autorPromptsCount > 0 && autorVotosCount > 0 && <span className="mx-1">·</span>}
+                        {autorVotosCount > 0 && <span>{autorVotosCount} voto{autorVotosCount !== 1 ? 's' : ''} recebido{autorVotosCount !== 1 ? 's' : ''}</span>}
+                      </p>
+                    )}
+                    <p className="text-xs text-zinc-600 mt-1 group-hover:text-green-400 transition-colors">Ver perfil →</p>
+                  </div>
+                </Link>
+              </div>
+            )
+          })()}
 
           <div className="p-4 rounded-xl border border-zinc-800 bg-zinc-900/50 text-center">
-            <p className="text-xs text-zinc-500 mb-3">Tem um prompt para compartilhar?</p>
+            <p className="text-xs text-zinc-400 font-medium mb-1">Você tem um prompt que funciona?</p>
+            <p className="text-xs text-zinc-600 mb-3 leading-relaxed">Publique e torne-se referência na sua área</p>
             <Link
               href={user ? '/dashboard/novo-prompt' : '/signup'}
               className="block w-full py-2 rounded-lg bg-zinc-800 text-zinc-300 text-sm font-medium hover:bg-zinc-700 hover:text-white transition-colors"
             >
-              {user ? 'Enviar prompt' : 'Criar conta'}
+              {user ? 'Publicar meu prompt' : 'Criar conta grátis'}
             </Link>
           </div>
         </div>

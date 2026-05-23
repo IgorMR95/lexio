@@ -1,11 +1,55 @@
 import { createClient } from '@/lib/supabase/server'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
+import { Metadata } from 'next'
 import { FollowButton } from '@/components/ui/FollowButton'
+import { ShareButton } from '@/components/ui/ShareButton'
 
 export const dynamic = 'force-dynamic'
 
 const PREVIEW = 5
+const BASE_URL = 'https://www.midoriapp.com.br'
+
+function getDesignacao(promptsCount: number, votosRecebidos: number, temDestaque: boolean): { label: string; color: string } | null {
+  if (temDestaque) return { label: 'Referência Editorial', color: 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20' }
+  if (promptsCount >= 5 && votosRecebidos >= 20) return { label: 'Especialista', color: 'bg-blue-500/10 text-blue-400 border-blue-500/20' }
+  if (promptsCount >= 1) return { label: 'Contribuidor', color: 'bg-green-500/10 text-green-400 border-green-500/20' }
+  return null
+}
+
+export async function generateMetadata({ params }: { params: { id: string } }): Promise<Metadata> {
+  const supabase = createClient()
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('full_name, email, bio, instituicao')
+    .eq('id', params.id)
+    .single()
+
+  if (!profile) return { title: 'Perfil | Midori' }
+
+  const name = profile.full_name ?? profile.email ?? 'Contribuidor'
+  const inst = profile.instituicao ? ` — ${profile.instituicao}` : ''
+  const description = profile.bio
+    ? `${name}${inst}. ${profile.bio}`
+    : `${name}${inst}. Contribuidor da maior base de prompts jurídicos do Brasil.`
+
+  return {
+    title: `${name} | Midori — Base de Prompts Jurídicos`,
+    description,
+    openGraph: {
+      title: `${name} | Midori`,
+      description,
+      url: `${BASE_URL}/u/${params.id}`,
+      siteName: 'Midori — Base de Prompts Jurídicos',
+      type: 'profile',
+    },
+    twitter: {
+      card: 'summary',
+      title: `${name} | Midori`,
+      description,
+    },
+  }
+}
 
 export default async function PublicProfilePage({ params }: { params: { id: string } }) {
   const supabase = createClient()
@@ -20,15 +64,25 @@ export default async function PublicProfilePage({ params }: { params: { id: stri
 
   const { data: { user: currentUser } } = await supabase.auth.getUser()
 
+  // Busca prompts do autor para calcular votos recebidos e cópias
+  const { data: autorPromptIds } = await supabase
+    .from('prompts')
+    .select('id, total_copias')
+    .eq('autor_id', params.id)
+    .in('status', ['ativo', 'aprovado'])
+
+  const promptIds = (autorPromptIds ?? []).map((p: any) => p.id)
+  const totalCopias = (autorPromptIds ?? []).reduce((sum: number, p: any) => sum + (p.total_copias ?? 0), 0)
+
   const [
     { count: seguidoresCount },
     { count: seguindoCount },
     { count: promptsCount },
     { count: skillsCount },
+    { count: votosRecebidos },
+    { count: destaqueCount },
     { data: promptsPreview },
     { data: skillsPreview },
-    { data: promptCurtidasRaw },
-    { data: skillCurtidasRaw },
     { data: seguindoPreview },
     { data: seguidoresPreview },
     { data: grupos },
@@ -37,7 +91,10 @@ export default async function PublicProfilePage({ params }: { params: { id: stri
     (supabase as any).from('seguidores').select('id', { count: 'exact', head: true }).eq('seguidor_id', params.id),
     supabase.from('prompts').select('id', { count: 'exact', head: true }).eq('autor_id', params.id).in('status', ['ativo', 'aprovado']),
     (supabase as any).from('skills').select('id', { count: 'exact', head: true }).eq('autor_id', params.id).in('status', ['ativo', 'aprovado']),
-    // 5 prompts mais recentes
+    promptIds.length > 0
+      ? (supabase as any).from('prompt_votos').select('id', { count: 'exact', head: true }).in('prompt_id', promptIds)
+      : Promise.resolve({ count: 0 }),
+    supabase.from('prompts').select('id', { count: 'exact', head: true }).eq('autor_id', params.id).eq('destaque', true).in('status', ['ativo', 'aprovado']),
     supabase
       .from('prompts')
       .select('id, titulo, descricao_curta, created_at, areas_direito(nome)')
@@ -45,7 +102,6 @@ export default async function PublicProfilePage({ params }: { params: { id: stri
       .in('status', ['ativo', 'aprovado'])
       .order('created_at', { ascending: false })
       .limit(PREVIEW),
-    // 5 skills mais recentes
     (supabase as any)
       .from('skills')
       .select('id, titulo, descricao, tipo, areas_direito(nome), created_at')
@@ -53,42 +109,24 @@ export default async function PublicProfilePage({ params }: { params: { id: stri
       .in('status', ['ativo', 'aprovado'])
       .order('created_at', { ascending: false })
       .limit(PREVIEW),
-    // 5 prompts curtidos mais recentes
-    (supabase as any)
-      .from('prompt_votos')
-      .select('created_at, prompts(id, titulo, descricao_curta, areas_direito(nome))')
-      .eq('user_id', params.id)
-      .order('created_at', { ascending: false })
-      .limit(PREVIEW),
-    // 5 skills curtidas mais recentes
-    (supabase as any)
-      .from('skill_votos')
-      .select('created_at, skills(id, titulo, descricao, tipo)')
-      .eq('user_id', params.id)
-      .order('created_at', { ascending: false })
-      .limit(PREVIEW),
-    // 5 usuários que segue
     (supabase as any)
       .from('seguidores')
       .select('seguido_id, profiles!seguidores_seguido_id_fkey(id, full_name, email, instituicao)')
       .eq('seguidor_id', params.id)
       .order('created_at', { ascending: false })
       .limit(PREVIEW),
-    // 5 seguidores
     (supabase as any)
       .from('seguidores')
       .select('seguidor_id, profiles!seguidores_seguidor_id_fkey(id, full_name, email, instituicao)')
       .eq('seguido_id', params.id)
       .order('created_at', { ascending: false })
       .limit(PREVIEW),
-    // grupos
     (supabase as any)
       .from('grupo_membros')
       .select('papel, grupos(id, nome, tipo)')
       .eq('user_id', params.id),
   ])
 
-  // Is current user following this profile?
   let isFollowing = false
   if (currentUser && currentUser.id !== params.id) {
     const { data: followData } = await (supabase as any)
@@ -99,6 +137,8 @@ export default async function PublicProfilePage({ params }: { params: { id: stri
       .single()
     isFollowing = !!followData
   }
+
+  const designacao = getDesignacao(promptsCount ?? 0, votosRecebidos ?? 0, (destaqueCount ?? 0) > 0)
 
   const tipoLabel: Record<string, string> = {
     estudo: 'Grupo de Estudo', escritorio: 'Escritório', outro: 'Outro',
@@ -115,10 +155,6 @@ export default async function PublicProfilePage({ params }: { params: { id: stri
   const displayName = profile.full_name ?? profile.email ?? 'Usuário'
   const initial = displayName[0]?.toUpperCase() ?? '?'
   const uid = params.id
-
-  const promptCurtidas = (promptCurtidasRaw ?? []).filter((r: any) => r.prompts)
-  const skillCurtidas = (skillCurtidasRaw ?? []).filter((r: any) => r.skills)
-  const totalCurtidas = (promptCurtidas.length) + (skillCurtidas.length)
 
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
@@ -142,10 +178,18 @@ export default async function PublicProfilePage({ params }: { params: { id: stri
               {profile.role === 'admin' && (
                 <span className="text-xs px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20">Admin</span>
               )}
+              {designacao && (
+                <span className={`text-xs px-2 py-0.5 rounded-full border ${designacao.color}`}>
+                  {designacao.label}
+                </span>
+              )}
             </div>
-            {currentUser?.id !== params.id && (
-              <FollowButton seguidoId={params.id} initialFollowing={isFollowing} userId={currentUser?.id ?? null} />
-            )}
+            <div className="flex items-center gap-2">
+              <ShareButton url={`${BASE_URL}/u/${uid}`} name={displayName} />
+              {currentUser?.id !== params.id && (
+                <FollowButton seguidoId={params.id} initialFollowing={isFollowing} userId={currentUser?.id ?? null} />
+              )}
+            </div>
           </div>
           {profile.instituicao && <p className="text-sm text-zinc-400 mb-2">{profile.instituicao}</p>}
           {profile.bio
@@ -166,17 +210,17 @@ export default async function PublicProfilePage({ params }: { params: { id: stri
         </div>
       </div>
 
-      {/* Stats rápidos */}
+      {/* Stats de contribuição */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-8">
         {[
-          { label: 'Prompts', count: promptsCount ?? 0, href: `/u/${uid}/prompts`, color: 'text-blue-400' },
-          { label: 'Skills MD', count: skillsCount ?? 0, href: `/u/${uid}/skills`, color: 'text-green-400' },
-          { label: 'Curtidas dadas', count: (promptsCount !== null) ? undefined : 0, href: `/u/${uid}/curtidas`, color: 'text-pink-400', raw: promptCurtidas.length + skillCurtidas.length },
-          { label: 'Seguindo', count: seguindoCount ?? 0, href: `/u/${uid}/seguindo`, color: 'text-violet-400' },
+          { label: 'Prompts publicados', count: promptsCount ?? 0, href: `/u/${uid}/prompts`, color: 'text-blue-400' },
+          { label: 'Skills publicadas', count: skillsCount ?? 0, href: `/u/${uid}/skills`, color: 'text-green-400' },
+          { label: 'Votos recebidos', count: votosRecebidos ?? 0, href: `/u/${uid}/prompts`, color: 'text-pink-400' },
+          { label: 'Usos registrados', count: totalCopias, href: `/u/${uid}/prompts`, color: 'text-violet-400' },
         ].map(s => (
           <Link key={s.label} href={s.href}
             className="p-4 rounded-xl border border-zinc-800 bg-zinc-900/40 hover:border-zinc-700 hover:bg-zinc-900 transition-all text-center group">
-            <p className={`text-2xl font-black tabular-nums ${s.color}`}>{s.raw ?? s.count}</p>
+            <p className={`text-2xl font-black tabular-nums ${s.color}`}>{s.count}</p>
             <p className="text-xs text-zinc-500 mt-0.5 group-hover:text-zinc-400 transition-colors">{s.label}</p>
           </Link>
         ))}
@@ -250,41 +294,6 @@ export default async function PublicProfilePage({ params }: { params: { id: stri
                   {s.areas_direito?.nome && (
                     <span className="text-xs text-zinc-600">{s.areas_direito.nome}</span>
                   )}
-                </div>
-              </div>
-              <span className="text-xs text-zinc-600 group-hover:text-zinc-400 flex-shrink-0 mt-0.5">Ver →</span>
-            </Link>
-          ))}
-        </Section>
-
-        {/* Curtidas (prompts + skills intercalados) */}
-        <Section
-          title="Curtidas"
-          count={totalCurtidas}
-          verMaisHref={`/u/${uid}/curtidas`}
-          empty="Nenhuma curtida ainda."
-          badge="prévia"
-        >
-          {promptCurtidas.slice(0, 3).map((r: any) => (
-            <Link key={r.prompts.id} href={`/prompts/${r.prompts.id}`}
-              className="group flex items-start justify-between gap-3 px-4 py-3 rounded-lg border border-zinc-800 bg-zinc-900/30 hover:border-zinc-700 hover:bg-zinc-900 transition-all">
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-white group-hover:text-pink-300 transition-colors line-clamp-1">{r.prompts.titulo}</p>
-                <div className="flex items-center gap-2 mt-1">
-                  <span className="text-xs px-1.5 py-0.5 rounded-full bg-blue-500/10 text-blue-400 border border-blue-500/20">Prompt</span>
-                  {r.prompts.areas_direito?.nome && <span className="text-xs text-zinc-600">{r.prompts.areas_direito.nome}</span>}
-                </div>
-              </div>
-              <span className="text-xs text-zinc-600 group-hover:text-zinc-400 flex-shrink-0 mt-0.5">Ver →</span>
-            </Link>
-          ))}
-          {skillCurtidas.slice(0, 2).map((r: any) => (
-            <Link key={r.skills.id} href={`/skills/${r.skills.id}`}
-              className="group flex items-start justify-between gap-3 px-4 py-3 rounded-lg border border-zinc-800 bg-zinc-900/30 hover:border-zinc-700 hover:bg-zinc-900 transition-all">
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-white group-hover:text-pink-300 transition-colors line-clamp-1">{r.skills.titulo}</p>
-                <div className="flex items-center gap-2 mt-1">
-                  <span className="text-xs px-1.5 py-0.5 rounded-full bg-green-500/10 text-green-400 border border-green-500/20">Skill MD</span>
                 </div>
               </div>
               <span className="text-xs text-zinc-600 group-hover:text-zinc-400 flex-shrink-0 mt-0.5">Ver →</span>

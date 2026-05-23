@@ -175,23 +175,28 @@ export default async function HomePage() {
 
             {/* Prompts em destaque */}
             <div className="p-6 border-b border-zinc-800 lg:border-r">
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-2">
-                  <svg className="w-4 h-4 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <div className="flex items-start gap-3 mb-4">
+                <div className="w-8 h-8 rounded-xl bg-green-500/10 border border-green-500/20 flex items-center justify-center flex-shrink-0">
+                  <svg className="w-3.5 h-3.5 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                   </svg>
-                  <span className="text-sm font-semibold text-white">Prompts em destaque</span>
                 </div>
-                <Link href="/prompts" className="text-xs text-zinc-500 hover:text-green-400 transition-colors">Ver todos →</Link>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center justify-between gap-2">
+                    <h3 className="text-sm font-bold text-white">Prompts em destaque</h3>
+                    <Link href="/prompts" className="text-xs text-zinc-500 hover:text-green-400 transition-colors flex-shrink-0">Ver todos →</Link>
+                  </div>
+                  <p className="text-xs text-zinc-500 mt-0.5">Os mais votados esta semana</p>
+                </div>
               </div>
               {!destaquesSemana?.length
                 ? <p className="text-xs text-zinc-600 italic">Nenhum destaque esta semana.</p>
                 : (
-                  <div className="space-y-1">
+                  <div className="space-y-2">
                     {destaquesSemana.map((p: any, i: number) => (
-                      <Link key={p.id} href={`/prompts/${p.id}`} className="flex items-center gap-2.5 px-2 py-2 rounded-lg hover:bg-zinc-800/40 transition-colors group">
+                      <Link key={p.id} href={`/prompts/${p.id}`} className="group flex items-center gap-2.5 px-3 py-2 rounded-xl border border-zinc-800/60 hover:border-zinc-700 hover:bg-zinc-800/40 transition-all">
                         <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold border flex-shrink-0 ${posBadge(i)}`}>{i + 1}</span>
-                        <p className="flex-1 text-xs text-zinc-300 group-hover:text-white transition-colors truncate leading-relaxed">{p.titulo}</p>
+                        <p className="flex-1 text-xs text-zinc-300 group-hover:text-green-300 transition-colors truncate">{p.titulo}</p>
                         {p.areas_direito?.nome && <span className="text-[10px] text-zinc-600 flex-shrink-0">{p.areas_direito.nome}</span>}
                       </Link>
                     ))}
@@ -202,24 +207,29 @@ export default async function HomePage() {
 
             {/* IAs mais votadas */}
             <div className="p-6 border-b border-zinc-800">
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-2">
-                  <svg className="w-4 h-4 text-violet-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <div className="flex items-start gap-3 mb-4">
+                <div className="w-8 h-8 rounded-xl bg-violet-500/10 border border-violet-500/20 flex items-center justify-center flex-shrink-0">
+                  <svg className="w-3.5 h-3.5 text-violet-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
                   </svg>
-                  <span className="text-sm font-semibold text-white">IAs mais votadas</span>
                 </div>
-                <Link href="/ranking" className="text-xs text-zinc-500 hover:text-violet-400 transition-colors">Ver ranking →</Link>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center justify-between gap-2">
+                    <h3 className="text-sm font-bold text-white">IAs mais votadas</h3>
+                    <Link href="/ranking" className="text-xs text-zinc-500 hover:text-violet-400 transition-colors flex-shrink-0">Ver ranking →</Link>
+                  </div>
+                  <p className="text-xs text-zinc-500 mt-0.5">Modelos e ferramentas jurídicas</p>
+                </div>
               </div>
               {!topFerrs.length
                 ? <p className="text-xs text-zinc-600 italic">Nenhum dado esta semana.</p>
                 : (
-                  <div className="space-y-1">
+                  <div className="space-y-2">
                     {topFerrs.map((f, i) => (
-                      <Link key={f.id} href={`/ranking/${f.id}`} className="flex items-center gap-2.5 px-2 py-2 rounded-lg hover:bg-zinc-800/40 transition-colors group">
+                      <Link key={f.id} href={`/ranking/${f.id}`} className="group flex items-center gap-2.5 px-3 py-2 rounded-xl border border-zinc-800/60 hover:border-zinc-700 hover:bg-zinc-800/40 transition-all">
                         <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold border flex-shrink-0 ${posBadge(i)}`}>{i + 1}</span>
                         <div className="flex-1 min-w-0">
-                          <p className="text-xs text-zinc-300 group-hover:text-white transition-colors truncate">{f.nome}</p>
+                          <p className="text-xs text-zinc-300 group-hover:text-violet-300 transition-colors truncate">{f.nome}</p>
                           {f.tipo && <p className="text-[10px] text-zinc-600">{TIPO_LABEL[f.tipo] ?? f.tipo}</p>}
                         </div>
                         <span className="text-[10px] text-zinc-600 flex-shrink-0">{f.votos} votos</span>
@@ -232,23 +242,28 @@ export default async function HomePage() {
 
             {/* Skills MD em destaque */}
             <div className="p-6 border-b lg:border-b-0 border-zinc-800 lg:border-r">
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-2">
-                  <svg className="w-4 h-4 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <div className="flex items-start gap-3 mb-4">
+                <div className="w-8 h-8 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center flex-shrink-0">
+                  <svg className="w-3.5 h-3.5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
                   </svg>
-                  <span className="text-sm font-semibold text-white">Skills MD em destaque</span>
                 </div>
-                <Link href="/skills" className="text-xs text-zinc-500 hover:text-blue-400 transition-colors">Ver todas →</Link>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center justify-between gap-2">
+                    <h3 className="text-sm font-bold text-white">Skills MD em destaque</h3>
+                    <Link href="/skills" className="text-xs text-zinc-500 hover:text-blue-400 transition-colors flex-shrink-0">Ver todas →</Link>
+                  </div>
+                  <p className="text-xs text-zinc-500 mt-0.5">Automações mais acessadas</p>
+                </div>
               </div>
               {!skillsDestaqueSemana?.length
                 ? <p className="text-xs text-zinc-600 italic">Nenhum destaque esta semana.</p>
                 : (
-                  <div className="space-y-1">
+                  <div className="space-y-2">
                     {skillsDestaqueSemana.map((s: any, i: number) => (
-                      <Link key={s.id} href={`/skills/${s.id}`} className="flex items-center gap-2.5 px-2 py-2 rounded-lg hover:bg-zinc-800/40 transition-colors group">
+                      <Link key={s.id} href={`/skills/${s.id}`} className="group flex items-center gap-2.5 px-3 py-2 rounded-xl border border-zinc-800/60 hover:border-zinc-700 hover:bg-zinc-800/40 transition-all">
                         <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold border flex-shrink-0 ${posBadge(i)}`}>{i + 1}</span>
-                        <p className="flex-1 text-xs text-zinc-300 group-hover:text-white transition-colors truncate leading-relaxed">{s.titulo}</p>
+                        <p className="flex-1 text-xs text-zinc-300 group-hover:text-blue-300 transition-colors truncate">{s.titulo}</p>
                         {s.areas_direito?.nome && <span className="text-[10px] text-zinc-600 flex-shrink-0">{s.areas_direito.nome}</span>}
                       </Link>
                     ))}
@@ -259,27 +274,32 @@ export default async function HomePage() {
 
             {/* Top especialistas */}
             <div className="p-6">
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-2">
-                  <svg className="w-4 h-4 text-yellow-400" fill="currentColor" viewBox="0 0 24 24">
+              <div className="flex items-start gap-3 mb-4">
+                <div className="w-8 h-8 rounded-xl bg-yellow-500/10 border border-yellow-500/20 flex items-center justify-center flex-shrink-0">
+                  <svg className="w-3.5 h-3.5 text-yellow-400" fill="currentColor" viewBox="0 0 24 24">
                     <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
                   </svg>
-                  <span className="text-sm font-semibold text-white">Top especialistas</span>
                 </div>
-                <Link href="/especialistas" className="text-xs text-zinc-500 hover:text-yellow-400 transition-colors">Ver ranking →</Link>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center justify-between gap-2">
+                    <h3 className="text-sm font-bold text-white">Top especialistas</h3>
+                    <Link href="/especialistas" className="text-xs text-zinc-500 hover:text-yellow-400 transition-colors flex-shrink-0">Ver ranking →</Link>
+                  </div>
+                  <p className="text-xs text-zinc-500 mt-0.5">Prompts + skills + votos da comunidade</p>
+                </div>
               </div>
               {!topContribuidores.length
                 ? <p className="text-xs text-zinc-600 italic">Nenhum dado disponível.</p>
                 : (
-                  <div className="space-y-1">
+                  <div className="space-y-2">
                     {topContribuidores.map((c: TopContribuidor, i: number) => (
-                      <Link key={c.id} href={`/u/${c.id}`} className="flex items-center gap-2.5 px-2 py-2 rounded-lg hover:bg-zinc-800/40 transition-colors group">
+                      <Link key={c.id} href={`/u/${c.id}`} className="group flex items-center gap-2.5 px-3 py-2 rounded-xl border border-zinc-800/60 hover:border-zinc-700 hover:bg-zinc-800/40 transition-all">
                         <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold border flex-shrink-0 ${posBadge(i)}`}>{i + 1}</span>
-                        <div className="w-7 h-7 rounded-full bg-gradient-to-br from-zinc-700 to-zinc-800 border border-zinc-700 flex items-center justify-center flex-shrink-0">
+                        <div className="w-7 h-7 rounded-full bg-zinc-800 border border-zinc-700 flex items-center justify-center flex-shrink-0">
                           <span className="text-[11px] font-bold text-zinc-300">{c.full_name[0]?.toUpperCase()}</span>
                         </div>
                         <div className="flex-1 min-w-0">
-                          <p className="text-xs font-medium text-zinc-300 group-hover:text-white transition-colors truncate">{c.full_name}</p>
+                          <p className="text-xs font-semibold text-zinc-300 group-hover:text-yellow-300 transition-colors truncate">{c.full_name}</p>
                           {c.instituicao && <p className="text-[10px] text-zinc-600 truncate">{c.instituicao}</p>}
                         </div>
                         <span className="text-xs font-bold text-yellow-400 flex-shrink-0">{c.total_votos}v</span>
